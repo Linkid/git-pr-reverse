@@ -1,0 +1,15 @@
+{
+    "manifest_version": 3,
+
+    "name": "Git PR reverse",
+    "description": "List open git pull requests of a file",
+    "version": "0.1.0",
+    "author": "Linkid",
+    "homepage_url": "https://github.com/Linkid/git-pr-reverse",
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "git-pr-reverse@webext.com",
+            "strict_min_version": "109.0"
+        }
+    }
+}
