@@ -9,6 +9,7 @@ browser.action.disable()
 
 browser.tabs.onCreated.addListener(handleCreated)
 browser.tabs.onUpdated.addListener(handleUpdated)
+browser.tabs.onRemoved.addListener(handleRemoved)
 
 //
 // Functions
@@ -78,6 +79,10 @@ function render(prs, tabId) {
         text: (prs.length).toString(),
         tabId: tabId
     })
+
+    // save results
+    // keys: "tabId", "prs"
+    browser.storage.local.set({ tabId, prs })
 }
 
 function main(tab) {
@@ -120,4 +125,14 @@ function handleUpdated(tabId, changeInfo, tabInfo) {
         // do the thing
         main(tabInfo)
     }
+}
+
+function handleRemoved(tabId, removeInfo) {
+    // remove info from storage
+    browser.storage.local.get().then(results => {
+        if (Object.keys(results).length != 0 && results.tabId == tabId) {
+            browser.storage.local.remove(["tabId", "prs"])
+                .catch(error => console.error(`Error: ${error}`))
+        }
+    })
 }
