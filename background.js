@@ -1,3 +1,5 @@
+import * as forges from './forges.js'
+
 //
 // Main
 //
@@ -89,6 +91,20 @@ function main(tab) {
     // split the url
     const url = new URL(tab.url)
     const hostname = url.hostname
+
+    // get the forge
+    switch (true) {
+        case (hostname.includes("github")):
+            // enable the action
+            browser.action.enable(tab.id)
+
+            // get forge attributes
+            forge = forges.github
+            break
+        default:
+            forge = null
+            return
+    }
 
     // get project info from the URL
     const urlInfoMatch = url.pathname.match("/(?<projectKey>[^/]+)\/(?<repoSlug>[^/]+)\/[^/]+\/[^/]+\/(?<filepath>.*)")
