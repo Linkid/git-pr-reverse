@@ -29,7 +29,8 @@
             "48": "static/icon-48.png",
             "128": "static/icon-128.png"
         },
-        "default_title": "Git PR reverse"
+        "default_title": "Git PR reverse",
+        "default_popup": "popup/popup.html"
     },
 
     "permissions": [
