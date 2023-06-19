@@ -1,0 +1,31 @@
+name: Build
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - '*'
+
+jobs:
+  firefox:
+    name: Build the extension for Firefox
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+      - name: Install web-ext
+        run: npm install --global web-ext
+      - name: Display web-ext version
+        run: web-ext --version
+
+      - name: Build with web-ext
+        run: web-ext build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: web-ext-artifacts/*.zip
+          name: git-pr-ext-firefox.zip
