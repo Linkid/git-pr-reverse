@@ -33,9 +33,30 @@ function render(prs, urlInfo) {
     ul.appendChild(fragment)
 }
 
+function localize() {
+    //Localize by replacing __MSG_***__ meta tags
+    var toLocalize = document.querySelectorAll("[i18n]")
+    for (var i=0; i < toLocalize.length; i++) {
+        var obj = toLocalize[i]
+        var text = obj.textContent
+        var textLocalized = text.replace(
+            /__MSG_(\w+)__/g,
+            function(match, v1) {
+                return v1 ? browser.i18n.getMessage(v1) : ""
+            }
+        )
+        console.log(textLocalized)
+
+        if(textLocalized != text) {
+            obj.textContent = textLocalized
+        }
+    }
+}
+
 //
 // Main
 //
+localize()
 browser.tabs.query({active: true, currentWindow: true})
     .then(tabs => {
         // get the first tab object in the array

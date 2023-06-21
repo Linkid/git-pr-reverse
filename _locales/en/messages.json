@@ -1,0 +1,16 @@
+{
+  "extensionDescription": {
+      "message": "List open git pull requests of a file",
+      "description": "Description of the extension"
+  },
+
+  "popupTitle": {
+      "message": "List of pull requests",
+      "description": "Title in the popup"
+  },
+
+  "popupEmptyList": {
+      "message": "Not modified",
+      "description": "Empty list message in the popup"
+  }
+}
