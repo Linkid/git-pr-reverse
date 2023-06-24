@@ -26,6 +26,7 @@ function render(prs, urlInfo) {
         li = document.createElement("li")
         a = document.createElement("a")
         a.setAttribute("href", urlInfo.origin + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug  + "/" + "/pull/" + pr)
+        a.setAttribute("target", "_blank")
         a.textContent = pr
         li.appendChild(a)
         fragment.appendChild(li)
