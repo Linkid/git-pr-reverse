@@ -16,4 +16,4 @@ jobs:
       - name: Display web-ext version
         run: web-ext --version
       - name: Lint the webextension
-        run: web-ext lint
+        run: web-ext lint --warnings-as-errors
