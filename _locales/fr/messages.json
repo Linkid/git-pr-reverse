@@ -1,0 +1,16 @@
+{
+  "extensionDescription": {
+        "message": "Liste les demandes de modifications en cours pour un fichier",
+        "description": "Description de l'extension"
+    },
+
+  "popupTitle": {
+        "message": "Liste des demandes de modifications",
+        "description": "Titre dans la popup"
+    },
+
+  "popupEmptyList": {
+        "message": "Non modifié",
+        "description": "Message dans la popup si la liste est vide"
+    }
+}
