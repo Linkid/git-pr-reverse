@@ -28,4 +28,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           path: web-ext-artifacts/*.zip
-          name: git-pr-ext-firefox.zip
+          name: git-pr-ext-firefox
