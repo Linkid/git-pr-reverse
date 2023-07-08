@@ -34,6 +34,18 @@ function render(prs, urlInfo) {
     ul.appendChild(fragment)
 }
 
+function renderError(urlInfo) {
+    // create a div element
+    div = document.createElement("div")
+    div.setAttribute("id", "error")
+    div.textContent = browser.i18n.getMessage("popupErrorMessage")
+
+    // replace the ul element with the div element
+    ul = document.getElementById("prs")
+    document.body.replaceChild(div, ul)
+
+}
+
 function localize() {
     //Localize by replacing __MSG_***__ meta tags
     var toLocalize = document.querySelectorAll("[i18n]")
@@ -46,7 +58,6 @@ function localize() {
                 return v1 ? browser.i18n.getMessage(v1) : ""
             }
         )
-        console.log(textLocalized)
 
         if(textLocalized != text) {
             obj.textContent = textLocalized
@@ -75,6 +86,9 @@ browser.tabs.query({active: true, currentWindow: true})
             .then(result => {
                 if (result.tabId == tabId) {
                     render(result.prs, urlInfo)
+                } else {
+                    // error in bg script
+                    renderError(urlInfo)
                 }
             })
             .catch(error => console.error(`Error: ${error}`))

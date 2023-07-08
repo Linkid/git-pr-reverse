@@ -12,5 +12,10 @@
   "popupEmptyList": {
         "message": "Non modifié",
         "description": "Message dans la popup si la liste est vide"
-    }
+  },
+
+  "popupErrorMessage": {
+      "message": "Échec lors de la récupération des données",
+      "description": "→ Message d'erreur dans la popup"
+  }
 }

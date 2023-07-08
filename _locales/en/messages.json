@@ -12,5 +12,10 @@
   "popupEmptyList": {
       "message": "Not modified",
       "description": "Empty list message in the popup"
+  },
+
+  "popupErrorMessage": {
+      "message": "Failed to get data",
+      "description": "→ Error message in the popup"
   }
 }

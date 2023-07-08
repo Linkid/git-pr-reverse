@@ -12,6 +12,10 @@
   "popupEmptyList": {
       "message": "",
       "description": ""
+  },
+
+  "popupErrorMessage": {
+      "message": "",
+      "description": ""
   }
 }
-

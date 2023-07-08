@@ -19,13 +19,15 @@ browser.tabs.onRemoved.addListener(handleRemoved)
 // fetch all pull requests
 // returns a promise with the list of pull requests
 function listAllPRs() {
+    console.log("List all pull requests")
+
     const request = new Request(forge.base_url + forge.repos + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug + forge.list_prs)
 
-    return fetch(request).then((response) => {
-        if (!response.ok) {
-            throw new Error(`Failed to list pull requests: [${response.status}] ${response.statusText}`)
-        }
-        return response.json()
+    return fetch(request).then(response => {
+        //if (!response.ok) {
+        //    throw new Error(`Failed to list pull requests: [${response.status}] ${response.statusText}: ${data.message}`)
+        //}
+        return response
     })
 }
 
@@ -35,11 +37,13 @@ function getModifiedFiles(pr) {
     // fetch the API
     const request = new Request(forge.base_url + forge.repos + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug + forge.list_prs + "/" + pr.number + forge.get_pred_files)
 
-    return fetch(request).then((response) => {
+    return fetch(request).then(async response => {
+        const data = await response.json()
+
         if (!response.ok) {
-            throw new Error(`Failed to list pull request modified files: [${response.status}] ${response.statusText}`)
+            throw new Error(`Failed to list pull request modified files: [${response.status}] ${response.statusText}: ${data}`)
         }
-        return response.json()
+        return data
     })
 }
 
@@ -73,6 +77,53 @@ function getFilesPRs(prs) {
     })
 
     return list
+}
+
+// check the rate limit
+function checkRateLimit() {
+    console.log("Check the rate limit")
+
+    // fetch the rate limit endpoint
+    return fetch(forge.base_url + forge.rate_limit)
+        .then(async response => {
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(`Failed to get rate limits: [${response.status}] ${response.statusText}: ${data.message}`)
+            }
+
+            console.log("Rate limit remaining:", data.resources.core.remaining)
+            if (data.resources.core.remaining == 0) {
+                throw new Error("Rate limit reached!")
+            }
+
+            return
+        })
+}
+
+// check the rate limit comparing to PRs length
+function checkRateLimitFromPRs(response) {
+    // get the rate limit header
+    const remaining = response.headers.get(forge.rate_limit_header)
+    console.log("Rate limit remaining (from header):", remaining)
+
+    // compare prs length to the rate limit
+    const prs = response.json()
+        .then(data => {
+            // check the "list" response
+            if (!response.ok) {
+                throw new Error(`Failed to list pull requests: [${response.status}] ${response.statusText}: ${data.message}`)
+            }
+
+            // compare number of pull requests with rate limit
+            console.log("Number of pull requests:", data.length)
+            if (remaining <= data.length) {
+                throw new Error("Rate limit reached!")
+            }
+            return data
+        })
+
+    return prs
 }
 
 function render(prs, tabId) {
@@ -114,8 +165,11 @@ function main(tab) {
     }
     urlInfo = urlInfoMatch.groups
 
-    // list pull requests
-    listAllPRs()
+    // check the forge rate limit
+    checkRateLimit()
+        // list pull requests
+        .then(listAllPRs)
+        .then(checkRateLimitFromPRs)
         .then(getFilesPRs)
         .then(values => Promise.all(values)
             // remove null values
@@ -123,7 +177,15 @@ function main(tab) {
             // render
             .then(prs => render(prs, tab.id))
         )
-        .catch(error => console.error(`Error: ${error}`))
+        .catch(error => {
+            // set the popup badge
+            browser.action.setBadgeText({
+                text: "err",
+                tabId: tab.id
+            })
+            // display the error
+            console.error(`${error}`)
+        })
 }
 
 //
