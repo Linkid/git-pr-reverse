@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.1 (unreleased)
+## v1.0.1 (2023-07-08)
 
 fix: stop calling GitHub API if the rate limit can be reached (#3)
 
