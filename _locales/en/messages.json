@@ -1,21 +1,18 @@
 {
   "extensionDescription": {
-      "message": "List open git pull requests of a file",
-      "description": "Description of the extension"
+    "message": "List open git pull requests of a file",
+    "description": "Description of the extension"
   },
-
   "popupTitle": {
-      "message": "List of pull requests",
-      "description": "Title in the popup"
+    "message": "List of pull requests",
+    "description": "Title in the popup"
   },
-
   "popupEmptyList": {
-      "message": "Not modified",
-      "description": "Empty list message in the popup"
+    "message": "Not modified",
+    "description": "Empty list message in the popup"
   },
-
   "popupErrorMessage": {
-      "message": "Failed to get data",
-      "description": "→ Error message in the popup"
+    "message": "Failed to get data",
+    "description": "Error message in the popup"
   }
 }
