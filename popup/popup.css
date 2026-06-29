@@ -1,0 +1,13 @@
+:root {
+  --bg: #fff; --fg: #1b1b1b; --muted: #6b6b6b;
+  --link: #0060df; --border: #e0e0e0;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1c1b22; --fg: #fbfbfe; --muted: #b1b1bd;
+          --link: #80b3ff; --border: #38383d; }
+}
+
+.popup { background: var(--bg); color: var(--fg); }
+.pr-list a { color: var(--link); text-decoration: none; }
+.pr-list a:hover { text-decoration: underline; }
+.pr-list__empty, .pr-list__loading, #error { color: var(--muted); }
