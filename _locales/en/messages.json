@@ -11,6 +11,10 @@
     "message": "Not modified",
     "description": "Empty list message in the popup"
   },
+  "popupLoading": {
+    "message": "Loading…",
+    "description": "Loading message in the popup while fetching pull requests"
+  },
   "popupErrorMessage": {
     "message": "Failed to get data",
     "description": "Error message in the popup"

@@ -12,22 +12,26 @@ function getUrlInfo(tab) {
 }
 
 function render(prs, urlInfo) {
-    // get the ul element
+    // get the ul element and clear the loading state
     ul = document.getElementById("prs")
-    fragment = document.createDocumentFragment()
+    ul.replaceChildren()
 
-    // remove the first element if there are pull requests
-    if (prs.length > 0) {
-        //ul.removeChild(ul.firstChild)
-        ul.replaceChildren()
+    // empty state: no open pull request modifies the file
+    if (prs.length == 0) {
+        li = document.createElement("li")
+        li.setAttribute("class", "pr-list__empty")
+        li.textContent = browser.i18n.getMessage("popupEmptyList")
+        ul.appendChild(li)
+       return
     }
 
+    fragment = document.createDocumentFragment()
     for (let pr of prs) {
         li = document.createElement("li")
         a = document.createElement("a")
-        a.setAttribute("href", urlInfo.origin + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug  + "/" + "pull/" + pr)
+        a.setAttribute("href", urlInfo.origin + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug + "/pull/" + pr)
         a.setAttribute("target", "_blank")
-        a.textContent = pr
+        a.textContent = "#" + pr
         li.appendChild(a)
         fragment.appendChild(li)
     }

@@ -11,6 +11,10 @@
     "message": "",
     "description": ""
   },
+  "popupLoading": {
+    "message": "",
+    "description": ""
+  },
   "popupErrorMessage": {
     "message": "",
     "description": ""
