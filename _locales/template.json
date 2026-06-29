@@ -1,21 +1,18 @@
 {
   "extensionDescription": {
-      "message": "",
-      "description": ""
+    "message": "",
+    "description": ""
   },
-
   "popupTitle": {
-      "message": "",
-      "description": ""
+    "message": "",
+    "description": ""
   },
-
   "popupEmptyList": {
-      "message": "",
-      "description": ""
+    "message": "",
+    "description": ""
   },
-
   "popupErrorMessage": {
-      "message": "",
-      "description": ""
+    "message": "",
+    "description": ""
   }
 }
