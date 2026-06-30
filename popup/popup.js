@@ -1,14 +1,19 @@
+import { forgeForHostname } from "../forges.js"
+
 //
 // Functions
 //
 function getUrlInfo(tab) {
     // split the url
     const url = new URL(tab.url)
-    const hostname = url.hostname
-    urlInfo = url.pathname.match("/(?<projectKey>[^/]+)\/(?<repoSlug>[^/]+)\/[^/]+\/[^/]+\/(?<filepath>.*)").groups
-    urlInfo["origin"] = url.origin
 
-    return urlInfo
+    // pick the forge adapter and parse the URL through it (null on a non-forge / non-file page)
+    const forge = forgeForHostname(url.hostname)
+    if (!forge) return null
+    const info = forge.parseUrl(url)
+    if (!info) return null
+
+    return { forge, ...info }
 }
 
 function render(prs, urlInfo) {
@@ -29,7 +34,7 @@ function render(prs, urlInfo) {
     for (let pr of prs) {
         li = document.createElement("li")
         a = document.createElement("a")
-        a.setAttribute("href", urlInfo.origin + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug + "/pull/" + pr)
+        a.setAttribute("href", urlInfo.forge.prWebUrl(urlInfo, pr))
         a.setAttribute("target", "_blank")
         a.textContent = "#" + pr
         li.appendChild(a)
@@ -83,6 +88,9 @@ browser.tabs.query({active: true, currentWindow: true})
 
         // get url info
         const urlInfo = getUrlInfo(tabInfo)
+        if (!urlInfo) {
+            return
+        }
 
         // get the prs list
         browser.storage.local.get()

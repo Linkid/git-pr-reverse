@@ -1,8 +1,63 @@
+// Each forge is an adapter that normalizes its API + URL quirks behind a common
+// interface used by background.js and popup.js. Adding a new forge is a new
+// adapter object here (plus a host permission); background.js / popup.js stay
+// unchanged.
+//
+// Adapter interface:
+//   hostnames   array of substrings matched against the page hostname (static
+//               forges only; self-hosted forges are matched against the user's
+//               configured instance list instead)
+//   parseUrl    (URL) -> { projectKey, repoSlug, filepath, origin } | null
+//   listPRsUrl  (info) -> API endpoint listing the repo's open pull requests
+//   filesUrl    (info, pr) -> API endpoint listing a PR's modified files
+//   filenames   (filesResponse) -> array of filenames touched by a PR
+//   prNumber    (pr) -> identifier of a PR (used in URLs and displayed)
+//   prWebUrl    (info, prNumber) -> web (non-API) URL of a PR, for popup links
+//   rateLimit   optional { url, header, remaining(data) }; null if the forge
+//               exposes no rate-limit endpoint
+
 export const github = {
+    hostnames: ["github.com"],
     base_url: "https://api.github.com",
-    repos: "/repos",
-    list_prs: "/pulls",
-    get_pred_files: "/files",
-    rate_limit: "/rate_limit",
-    rate_limit_header: "x-ratelimit-remaining",
+
+    parseUrl(url) {
+        const m = url.pathname.match(
+            "^/(?<projectKey>[^/]+)/(?<repoSlug>[^/]+)/[^/]+/[^/]+/(?<filepath>.+)$")
+        if (!m) return null
+        return { ...m.groups, origin: url.origin }
+    },
+
+    listPRsUrl(info) {
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls`
+    },
+
+    filesUrl(info, pr) {
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls/${this.prNumber(pr)}/files`
+    },
+
+    filenames(files) {
+        return files.map(file => file.filename)
+    },
+
+    prNumber(pr) {
+        return pr.number
+    },
+
+    prWebUrl(info, prNumber) {
+        return `${info.origin}/${info.projectKey}/${info.repoSlug}/pull/${prNumber}`
+    },
+
+    rateLimit: {
+        url: "https://api.github.com/rate_limit",
+        header: "x-ratelimit-remaining",
+        remaining: (data) => data.resources.core.remaining,
+    },
+}
+
+// registry of forges matched by a static hostname
+const staticForges = [github]
+
+// pick a forge adapter for a page hostname (null if none matches).
+export function forgeForHostname(hostname) {
+    return staticForges.find(f => f.hostnames.some(h => hostname.includes(h))) || null
 }

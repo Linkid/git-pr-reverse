@@ -75,13 +75,29 @@ check the service-worker console for details.
 
 ## Forges
 
-Forge endpoints are configured in `forges.js`.
+Forge endpoints are configured in `forges.js`, which defines one **adapter**
+per forge that normalizes its API and URL quirks behind a common interface,
+plus a `forgeForHostname()` registry lookup.
 
-To add a forge, you need to update the following file:
-- `forges.js`: add a config object
-- `background.js`: add the hostname to the switch / case
-- `manifest.json`: add the URL to the `host_permissions` key.
+Here is the interface for each forge:
 
+| Member       | Purpose                                                            |
+| ------------ | ------------------------------------------------------------------ |
+| `parseUrl`   | `(URL) → { projectKey, repoSlug, filepath, origin }` or `null`     |
+| `listPRsUrl` | API endpoint listing the repo's open PRs                           |
+| `filesUrl`   | API endpoint listing a PR's modified files                         |
+| `filenames`  | filenames touched by a PR, from the files-endpoint response        |
+| `prNumber`   | identifier of a PR (used in URLs and displayed)                    |
+| `prWebUrl`   | web (non-API) URL of a PR, for the popup links                     |
+| `rateLimit`  | optional `{ url, header, remaining(data) }`; `null` if unsupported |
+
+So, to add a new forge:
+- in `forges.js`, create a new object implementing this interface
+- in `forges.js`, add the forge to `staticForges`
+- in `manifest.json`, add a `host_permissions` entry
+
+Supported forges:
+- **GitHub**: https://docs.github.com/en/rest/pulls.
 
 ## Internationalization
 

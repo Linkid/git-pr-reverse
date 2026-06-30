@@ -1,4 +1,4 @@
-import * as forges from './forges.js'
+import { forgeForHostname } from './forges.js'
 
 //
 // Main
@@ -21,7 +21,7 @@ browser.tabs.onRemoved.addListener(handleRemoved)
 function listAllPRs() {
     console.log("List all pull requests")
 
-    const request = new Request(forge.base_url + forge.repos + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug + forge.list_prs)
+    const request = new Request(forge.listPRsUrl(urlInfo))
 
     return fetch(request).then(response => {
         //if (!response.ok) {
@@ -35,7 +35,7 @@ function listAllPRs() {
 // returns a promise with the list of modified files for a pull request
 function getModifiedFiles(pr) {
     // fetch the API
-    const request = new Request(forge.base_url + forge.repos + "/" + urlInfo.projectKey + "/" + urlInfo.repoSlug + forge.list_prs + "/" + pr.number + forge.get_pred_files)
+    const request = new Request(forge.filesUrl(urlInfo, pr))
 
     return fetch(request).then(async response => {
         const data = await response.json()
@@ -50,9 +50,7 @@ function getModifiedFiles(pr) {
 // get filenames from a list of modified files
 // returns a list of filenames
 function getFilenames(files) {
-    const filenames = new Array()
-    files.forEach(file => filenames.push(file.filename))
-    return filenames
+    return forge.filenames(files)
 }
 
 // returns the key if the item is in the array
@@ -72,7 +70,7 @@ function getFilesPRs(prs) {
         list.push(
             getModifiedFiles(pr)
             .then(getFilenames)
-            .then(filenames => addIfIncluded(filenames, urlInfo.filepath, pr.number))
+            .then(filenames => addIfIncluded(filenames, urlInfo.filepath, forge.prNumber(pr)))
         )
     })
 
@@ -81,10 +79,15 @@ function getFilesPRs(prs) {
 
 // check the rate limit
 function checkRateLimit() {
+    // forges without a rate-limit endpoint skip this check
+    if (!forge.rateLimit) {
+        return Promise.resolve()
+    }
+
     console.log("Check the rate limit")
 
     // fetch the rate limit endpoint
-    return fetch(forge.base_url + forge.rate_limit)
+    return fetch(forge.rateLimit.url)
         .then(async response => {
             const data = await response.json()
 
@@ -92,8 +95,9 @@ function checkRateLimit() {
                 throw new Error(`Failed to get rate limits: [${response.status}] ${response.statusText}: ${data.message}`)
             }
 
-            console.log("Rate limit remaining:", data.resources.core.remaining)
-            if (data.resources.core.remaining == 0) {
+            const remaining = forge.rateLimit.remaining(data)
+            console.log("Rate limit remaining:", remaining)
+            if (remaining == 0) {
                 throw new Error("Rate limit reached!")
             }
 
@@ -103,8 +107,8 @@ function checkRateLimit() {
 
 // check the rate limit comparing to PRs length
 function checkRateLimitFromPRs(response) {
-    // get the rate limit header
-    const remaining = response.headers.get(forge.rate_limit_header)
+    // get the rate limit header (forges without one skip the comparison)
+    const remaining = forge.rateLimit ? response.headers.get(forge.rateLimit.header) : null
     console.log("Rate limit remaining (from header):", remaining)
 
     // compare prs length to the rate limit
@@ -117,7 +121,7 @@ function checkRateLimitFromPRs(response) {
 
             // compare number of pull requests with rate limit
             console.log("Number of pull requests:", data.length)
-            if (remaining <= data.length) {
+            if (remaining !== null && remaining <= data.length) {
                 throw new Error("Rate limit reached!")
             }
             return data
@@ -141,29 +145,21 @@ function render(prs, tabId) {
 function main(tab) {
     // split the url
     const url = new URL(tab.url)
-    const hostname = url.hostname
 
-    // get the forge
-    switch (true) {
-        case (hostname.includes("github")):
-            // enable the action
-            browser.action.enable(tab.id)
-
-            // get forge attributes
-            forge = forges.github
-            break
-        default:
-            forge = null
-            return
+    // get the forge adapter by hostname
+    forge = forgeForHostname(url.hostname)
+    if (forge == null) {
+        return
     }
+    browser.action.enable(tab.id)
 
-    // get project info from the URL
-    const urlInfoMatch = url.pathname.match("/(?<projectKey>[^/]+)\/(?<repoSlug>[^/]+)\/[^/]+\/[^/]+\/(?<filepath>.*)")
-    if (urlInfoMatch == null) {
+    // get project info from the URL (forge-specific parsing)
+    const info = forge.parseUrl(url)
+    if (info == null) {
         browser.action.disable(tab.id)
         return
     }
-    urlInfo = urlInfoMatch.groups
+    urlInfo = info
 
     // check the forge rate limit
     checkRateLimit()
