@@ -6,12 +6,16 @@ import { forgeForHostname } from './forges.js'
 let forge = new Object()
 let urlInfo = new Object()
 
-// disable the action
-browser.action.disable()
+// register the extension against the browser (skipped when this module is
+// imported outside a WebExtension context, e.g. by the test runner)
+if (typeof browser !== "undefined") {
+    // disable the action
+    browser.action.disable()
 
-browser.tabs.onCreated.addListener(handleCreated)
-browser.tabs.onUpdated.addListener(handleUpdated)
-browser.tabs.onRemoved.addListener(handleRemoved)
+    browser.tabs.onCreated.addListener(handleCreated)
+    browser.tabs.onUpdated.addListener(handleUpdated)
+    browser.tabs.onRemoved.addListener(handleRemoved)
+}
 
 //
 // Functions
@@ -49,12 +53,12 @@ function getModifiedFiles(pr) {
 
 // get filenames from a list of modified files
 // returns a list of filenames
-function getFilenames(files) {
+export function getFilenames(forge, files) {
     return forge.filenames(files)
 }
 
 // returns the key if the item is in the array
-function addIfIncluded(array, item, key) {
+export function addIfIncluded(array, item, key) {
     if (array.includes(item)) {
         return key
     }
@@ -69,7 +73,7 @@ function getFilesPRs(prs) {
     prs.forEach(pr => {
         list.push(
             getModifiedFiles(pr)
-            .then(getFilenames)
+            .then(files => getFilenames(forge, files))
             .then(filenames => addIfIncluded(filenames, urlInfo.filepath, forge.prNumber(pr)))
         )
     })

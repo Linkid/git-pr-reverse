@@ -95,6 +95,7 @@ So, to add a new forge:
 - in `forges.js`, create a new object implementing this interface
 - in `forges.js`, add the forge to `staticForges`
 - in `manifest.json`, add a `host_permissions` entry
+- in `tests/forges.test.js`, add tests.
 
 Supported forges:
 - **GitHub**: https://docs.github.com/en/rest/pulls.
