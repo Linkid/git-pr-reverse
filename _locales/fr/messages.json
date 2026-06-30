@@ -18,5 +18,33 @@
   "popupErrorMessage": {
     "message": "Échec lors de la récupération des données",
     "description": "Message d'erreur dans la popup"
+  },
+  "optionsTitle": {
+    "message": "Paramètres",
+    "description": "Titre de la page d'options"
+  },
+  "optionsTokenLabel": {
+    "message": "Jeton d'accès personnel",
+    "description": "Libellé d'un champ de jeton de forge sur la page d'options"
+  },
+  "optionsTokenHint": {
+    "message": "Facultatif. Un jeton augmente la limite de l'API et permet à l'extension de voir les dépôts privés. Il est stocké uniquement sur cet appareil.",
+    "description": "Aide expliquant un champ de jeton de forge sur la page d'options"
+  },
+  "optionsSave": {
+    "message": "Enregistrer",
+    "description": "Libellé du bouton d'enregistrement sur la page d'options"
+  },
+  "optionsClear": {
+    "message": "Effacer",
+    "description": "Libellé du bouton d'effacement sur la page d'options"
+  },
+  "optionsSaved": {
+    "message": "Jeton enregistré",
+    "description": "Message affiché après l'enregistrement du jeton"
+  },
+  "optionsCleared": {
+    "message": "Jeton effacé",
+    "description": "Message affiché après l'effacement du jeton"
   }
 }

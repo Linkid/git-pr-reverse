@@ -6,6 +6,9 @@ import { forgeForHostname } from './forges.js'
 //
 let forge = new Object()
 let urlInfo = new Object()
+// headers sent with every forge API request; populated from the stored token
+// (empty when the forge supports no auth or the user configured no token)
+let requestHeaders = {}
 
 // register the extension against the browser (skipped when this module is
 // imported outside a WebExtension context, e.g. by the test runner, where the
@@ -22,12 +25,37 @@ if (browser) {
 //
 // Functions
 //
+// build the auth headers for a forge from an already-fetched storage object
+// returns the headers object — empty when there is no token or the forge
+// supports no authentication
+export function authHeadersFor(forge, stored) {
+    // forges without authentication need no token
+    if (!forge.authHeader || !forge.tokenStorageKey) {
+        return {}
+    }
+
+    const token = stored[forge.tokenStorageKey]
+    return token ? forge.authHeader(token) : {}
+}
+
+// load the auth headers for a forge from its stored token
+// returns a promise resolving to the headers object
+function loadAuthHeaders(forge) {
+    // forges without authentication need no token (and no storage read)
+    if (!forge.authHeader || !forge.tokenStorageKey) {
+        return Promise.resolve({})
+    }
+
+    return browser.storage.local.get(forge.tokenStorageKey)
+        .then(stored => authHeadersFor(forge, stored))
+}
+
 // fetch all pull requests
 // returns a promise with the list of pull requests
 function listAllPRs() {
     console.log("List all pull requests")
 
-    const request = new Request(forge.listPRsUrl(urlInfo))
+    const request = new Request(forge.listPRsUrl(urlInfo), { headers: requestHeaders })
 
     return fetch(request).then(response => {
         //if (!response.ok) {
@@ -41,7 +69,7 @@ function listAllPRs() {
 // returns a promise with the list of modified files for a pull request
 function getModifiedFiles(pr) {
     // fetch the API
-    const request = new Request(forge.filesUrl(urlInfo, pr))
+    const request = new Request(forge.filesUrl(urlInfo, pr), { headers: requestHeaders })
 
     return fetch(request).then(async response => {
         const data = await response.json()
@@ -93,7 +121,7 @@ function checkRateLimit() {
     console.log("Check the rate limit")
 
     // fetch the rate limit endpoint
-    return fetch(forge.rateLimit.url)
+    return fetch(forge.rateLimit.url, { headers: requestHeaders })
         .then(async response => {
             const data = await response.json()
 
@@ -167,8 +195,10 @@ function main(tab) {
     }
     urlInfo = info
 
-    // check the forge rate limit
-    checkRateLimit()
+    // load the stored API token, then check the forge rate limit
+    loadAuthHeaders(forge)
+        .then(headers => { requestHeaders = headers })
+        .then(checkRateLimit)
         // list pull requests
         .then(listAllPRs)
         .then(checkRateLimitFromPRs)

@@ -4,7 +4,7 @@
 // unchanged.
 //
 // Adapter interface:
-//   label       human-readable forge name
+//   label       human-readable forge name, shown in the options page UI
 //   hostnames   array of substrings matched against the page hostname (static
 //               forges only; self-hosted forges are matched against the user's
 //               configured instance list instead)
@@ -16,6 +16,10 @@
 //   prWebUrl    (info, prNumber) -> web (non-API) URL of a PR, for popup links
 //   rateLimit   optional { url, header, remaining(data) }; null if the forge
 //               exposes no rate-limit endpoint
+//   tokenStorageKey  optional storage.local key holding the user's API token;
+//                    omit if the forge supports no authentication
+//   authHeader  optional (token) -> headers object sent with API requests when
+//               a token is configured; omit if the forge supports no auth
 
 // API docs: https://docs.github.com/en/rest/pulls
 export const github = {
@@ -55,6 +59,15 @@ export const github = {
         header: "x-ratelimit-remaining",
         remaining: (data) => data.resources.core.remaining,
     },
+
+    // GitHub accepts classic and fine-grained personal access tokens as a
+    // Bearer credential. Authenticating raises the rate limit and grants
+    // access to private repositories the token can see.
+    tokenStorageKey: "githubToken",
+
+    authHeader(token) {
+        return { Authorization: `Bearer ${token}` }
+    },
 }
 
 // registry of forges matched by a static hostname
@@ -63,4 +76,10 @@ const staticForges = [github]
 // pick a forge adapter for a page hostname (null if none matches).
 export function forgeForHostname(hostname) {
     return staticForges.find(f => f.hostnames.some(h => hostname.includes(h))) || null
+}
+
+// forges that support authentication (declare both a token storage key and a
+// header builder); the options page renders one token field per such forge.
+export function authForges() {
+    return staticForges.filter(f => f.tokenStorageKey && f.authHeader)
 }

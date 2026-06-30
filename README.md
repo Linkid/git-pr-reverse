@@ -16,6 +16,9 @@ When you browse a file on a supported forge, the extension:
 This helps you spot pending changes before editing a file and avoid conflicting
 with work already in review.
 
+Optionally, set a personal access token in the extension's options to raise the
+API rate limit and list pull requests from private repositories.
+
 ## Supported forges
 
 - GitHub

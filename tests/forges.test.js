@@ -97,3 +97,16 @@ test("github.rateLimit exposes the endpoint and header", () => {
     assert.equal(github.rateLimit.url, "https://api.github.com/rate_limit")
     assert.equal(github.rateLimit.header, "x-ratelimit-remaining")
 })
+
+//
+// authentication
+//
+test("github.tokenStorageKey names the storage key for the token", () => {
+    assert.equal(github.tokenStorageKey, "githubToken")
+})
+
+test("github.authHeader builds a Bearer Authorization header", () => {
+    assert.deepEqual(github.authHeader("ghp_secret"), {
+        Authorization: "Bearer ghp_secret",
+    })
+})

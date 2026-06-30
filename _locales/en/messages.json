@@ -18,5 +18,33 @@
   "popupErrorMessage": {
     "message": "Failed to get data",
     "description": "Error message in the popup"
+  },
+  "optionsTitle": {
+    "message": "Settings",
+    "description": "Title of the options page"
+  },
+  "optionsTokenLabel": {
+    "message": "Personal access token",
+    "description": "Label for a forge token input on the options page"
+  },
+  "optionsTokenHint": {
+    "message": "Optional. A token raises the API rate limit and lets the extension see private repositories. It is stored only on this device.",
+    "description": "Hint explaining a forge token input on the options page"
+  },
+  "optionsSave": {
+    "message": "Save",
+    "description": "Label of the save button on the options page"
+  },
+  "optionsClear": {
+    "message": "Clear",
+    "description": "Label of the clear button on the options page"
+  },
+  "optionsSaved": {
+    "message": "Token saved",
+    "description": "Status message shown after saving the token"
+  },
+  "optionsCleared": {
+    "message": "Token cleared",
+    "description": "Status message shown after clearing the token"
   }
 }

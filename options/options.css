@@ -1,0 +1,24 @@
+:root {
+  --bg: #fff; --fg: #1b1b1b; --muted: #6b6b6b;
+  --link: #0060df; --border: #e0e0e0;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1c1b22; --fg: #fbfbfe; --muted: #b1b1bd;
+          --link: #80b3ff; --border: #38383d; }
+}
+
+body { background: var(--bg); color: var(--fg); }
+.options { max-width: 32rem; margin: 0 auto; padding: 1rem; }
+.options__form { display: flex; flex-direction: column; gap: 0.5rem; }
+.options__forge {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  border: 1px solid var(--border); border-radius: 4px; padding: 0.75rem;
+}
+.options__forge legend { font-weight: 600; padding: 0 0.25rem; }
+.options__hint { color: var(--muted); margin: 0; font-size: 0.85rem; }
+.options__input {
+  padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); color: var(--fg);
+}
+.options__actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.options__status { color: var(--muted); min-height: 1.2em; }

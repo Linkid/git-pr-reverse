@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { addIfIncluded, getFilenames } from "../background.js"
+import { addIfIncluded, getFilenames, authHeadersFor } from "../background.js"
 import { github } from "../forges.js"
 
 //
@@ -35,4 +35,23 @@ test("getFilenames delegates to the forge adapter", () => {
 
 test("getFilenames returns an empty array for no files", () => {
     assert.deepEqual(getFilenames(github, []), [])
+})
+
+//
+// authHeadersFor
+//
+test("authHeadersFor builds the auth header from a stored token", () => {
+    assert.deepEqual(authHeadersFor(github, { githubToken: "ghp_secret" }), {
+        Authorization: "Bearer ghp_secret",
+    })
+})
+
+test("authHeadersFor returns no headers when no token is stored", () => {
+    assert.deepEqual(authHeadersFor(github, {}), {})
+})
+
+test("authHeadersFor returns no headers for a forge without authentication", () => {
+    // an adapter that declares no token key / header builder
+    const forge = { hostnames: ["example.com"] }
+    assert.deepEqual(authHeadersFor(forge, { githubToken: "ghp_secret" }), {})
 })

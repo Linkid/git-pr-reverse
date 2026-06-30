@@ -18,5 +18,33 @@
   "popupErrorMessage": {
     "message": "",
     "description": ""
+  },
+  "optionsTitle": {
+    "message": "",
+    "description": ""
+  },
+  "optionsTokenLabel": {
+    "message": "",
+    "description": ""
+  },
+  "optionsTokenHint": {
+    "message": "",
+    "description": ""
+  },
+  "optionsSave": {
+    "message": "",
+    "description": ""
+  },
+  "optionsClear": {
+    "message": "",
+    "description": ""
+  },
+  "optionsSaved": {
+    "message": "",
+    "description": ""
+  },
+  "optionsCleared": {
+    "message": "",
+    "description": ""
   }
 }

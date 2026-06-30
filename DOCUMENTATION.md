@@ -10,6 +10,7 @@ request question: instead of *"which files does this PR change?"*, it tells you
 - [How it works](#how-it-works)
 - [Project layout](#project-layout)
 - [Usage](#usage)
+- [Authentication](#authentication)
 - [Forges](#forges)
 - [Internationalization](#internationalization)
 - [Install](#install)
@@ -36,8 +37,9 @@ Runs on every tab update:
 
 1.   **Parse the URL**: extract `projectKey`, `repoSlug` and `filepath`
 2.   **Detect the forge** by hostname
-3.   **Promise chain**: list PRs, get files, keep PRs including the file
-4.   **Render**: set the toolbar badge text and stores `{ tabId, prs }` in
+3.   **Load the auth headers** for the forge from the stored token (if any)
+4.   **Promise chain**: list PRs, get files, keep PRs including the file
+5.   **Render**: set the toolbar badge text and stores `{ tabId, prs }` in
      `browser.storage.local`.
 
 ### Popup
@@ -60,7 +62,12 @@ On open, the popup:
 ├── forges.js              # per-forge API endpoint config
 ├── popup/
 │   ├── popup.html         # popup markup
+│   ├── options.css        # popup page styles
 │   └── popup.js           # popup logic (read storage, render)
+├── options/
+│   ├── options.html       # options page markup
+│   ├── options.css        # options page styles
+│   └── options.js         # options logic (per-forge token fields)
 ├── _locales/
 │   ├── template.json      # empty key template for new locales
 │   ├── en/messages.json   # English (default locale)
@@ -80,6 +87,28 @@ On open, the popup:
 
 A badge of `err` means a request failed (often the rate limit — see below);
 check the service-worker console for details.
+
+## Authentication
+
+Authentication is **optional**. Without a token, the extension calls the forge
+API anonymously. Configuring a token raises the API rate limit and lets the
+extension see private repositories the token can access.
+
+To set a token, open the extension's **options page** (the *Settings* /
+*Preferences* / *Options* entry of the extension in the browser) and paste a
+forge token into its field. Tokens are saved in `browser.storage.local`, so
+they stay **on the device only** and are never synced or sent anywhere except
+as an `Authorization` header to that forge's API.
+
+The options page is forge-agnostic: it renders one token field per forge that
+declares authentication support (see `authForges()` in `forges.js`), so a new
+authenticated forge needs no options-page change.
+
+For GitHub, create a [personal access token][gh-token] (classic or
+fine-grained) — no scope is required for public repositories; grant repository
+read access for private ones.
+
+[gh-token]: https://github.com/settings/tokens
 
 ## Forges
 
@@ -101,6 +130,12 @@ Here is the interface for each forge:
 | `prNumber`   | identifier of a PR (used in URLs and displayed)                    |
 | `prWebUrl`   | web (non-API) URL of a PR, for the popup links                     |
 | `rateLimit`  | optional `{ url, header, remaining(data) }`; `null` if unsupported |
+| `tokenStorageKey` | optional `storage.local` key holding the user's token; omit for no auth |
+| `authHeader` | optional `(token) → headers` sent with API requests; omit for no auth |
+
+A forge that omits `tokenStorageKey`/`authHeader` simply stays unauthenticated;
+declaring both opts it into the [Authentication](#authentication) flow and the
+options-page token field.
 
 So, to add a new forge:
 - in `forges.js`, create a new object implementing this interface
@@ -119,7 +154,7 @@ language if it exists.
 
 Strings are resolved two ways:
 - `__MSG_<key>__` placeholders
-- `browser.i18n.getMessage("<key>")` (in `popup.js`).
+- `browser.i18n.getMessage("<key>")` (in `popup.js` and `options.js`).
 
 To add a locale:
 - copy `_locales/template.json` to `_locales/<lang>/messages.json`
@@ -156,4 +191,5 @@ See https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-worl
 | --------------------------- | ------------------------------------------------------------ |
 | Badge shows `err`           | A request failed — often the rate limit. Check the console.  |
 | Badge/popup never updates   | The page URL doesn't match the expected file path.           |
-| Rate limit reached quickly  | Unauthenticated API quota; the repo has many open PRs.       |
+| Rate limit reached quickly  | Low anonymous API quota — set a token (see [Authentication](#authentication)). |
+| Private repo shows no PRs   | Set a token whose access covers that repository.             |

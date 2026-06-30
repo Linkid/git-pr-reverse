@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="options.css">
+  </head>
+
+  <body>
+    <main class="options">
+      <h3 class="options__title" i18n=1>__MSG_optionsTitle__</h3>
+
+      <form id="options-form" class="options__form">
+        <!-- one token field per authenticated forge, rendered by options.js -->
+        <div id="forges"></div>
+
+        <div class="options__actions">
+          <button type="submit" class="options__save" i18n=1>__MSG_optionsSave__</button>
+          <button type="button" id="clear" class="options__clear" i18n=1>__MSG_optionsClear__</button>
+        </div>
+
+        <p id="status" class="options__status" role="status"></p>
+      </form>
+    </main>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
