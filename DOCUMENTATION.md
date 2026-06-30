@@ -8,7 +8,7 @@ request question: instead of *"which files does this PR change?"*, it tells you
 
 - [Overview](#overview)
 - [How it works](#how-it-works)
-- [Project structure](#project-structure)
+- [Project layout](#project-layout)
 - [Usage](#usage)
 - [Forges](#forges)
 - [Internationalization](#internationalization)
