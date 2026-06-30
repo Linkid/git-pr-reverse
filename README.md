@@ -2,7 +2,8 @@
 
 [![Firefox Add-on](https://img.shields.io/amo/v/git-pr-reverse?logo=firefoxbrowser&label=Firefox%20Add-on)](https://addons.mozilla.org/firefox/addon/git-pr-reverse/)
 
-A browser WebExtension to list open pull requests of a file.
+A browser WebExtension to list open pull requests of a file. Runs on Firefox
+and Chrome.
 
 ## Overview
 

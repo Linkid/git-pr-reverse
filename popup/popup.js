@@ -1,3 +1,4 @@
+import { browser } from "../browser.js"
 import { forgeForHostname } from "../forges.js"
 
 //

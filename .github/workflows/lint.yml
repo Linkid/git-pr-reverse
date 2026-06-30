@@ -21,5 +21,11 @@ jobs:
         run: npm install --global web-ext
       - name: Display web-ext version
         run: web-ext --version
+      # Firefox ignores Chrome's "service_worker" key and web-ext lint warns
+      # about it: BACKGROUND_SERVICE_WORKER_IGNORED. Strip it before linting
+      - name: Drop Chrome-only service_worker key for Firefox lint
+        run: |
+          jq 'del(.background.service_worker)' manifest.json > manifest.tmp
+          mv manifest.tmp manifest.json
       - name: Lint the webextension
         run: web-ext lint --warnings-as-errors

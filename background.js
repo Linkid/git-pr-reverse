@@ -1,3 +1,4 @@
+import { browser } from './browser.js'
 import { forgeForHostname } from './forges.js'
 
 //
@@ -7,8 +8,9 @@ let forge = new Object()
 let urlInfo = new Object()
 
 // register the extension against the browser (skipped when this module is
-// imported outside a WebExtension context, e.g. by the test runner)
-if (typeof browser !== "undefined") {
+// imported outside a WebExtension context, e.g. by the test runner, where the
+// browser shim resolves to undefined)
+if (browser) {
     // disable the action
     browser.action.disable()
 

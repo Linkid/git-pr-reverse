@@ -23,6 +23,13 @@ See the [README overview](README.md#overview) section.
 
 The extension has two parts that communicate through `browser.storage.local`.
 
+It runs on both Firefox and Chrome from a single source tree:
+- the manifest declares both `background.scripts` (Firefox event page) and
+  `background.service_worker` (Chrome); each browser reads the key it supports;
+- `browser.js` resolves the WebExtension API namespace — Firefox's standard
+  `browser` or Chrome's `chrome` (whose MV3 APIs also return promises) — so the
+  rest of the code calls `browser.*` everywhere.
+
 ### Background
 
 Runs on every tab update:
@@ -49,6 +56,7 @@ On open, the popup:
 .
 ├── manifest.json          # MV3 manifest
 ├── background.js          # service worker: fetch PRs, match file, set badge
+├── browser.js             # cross-browser WebExtension API shim (browser/chrome)
 ├── forges.js              # per-forge API endpoint config
 ├── popup/
 │   ├── popup.html         # popup markup
@@ -128,6 +136,16 @@ Load the repository folder as a temporary add-on:
 4. select `manifest.json`.
 
 See https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/.
+
+### Chrome
+
+Load the repository folder as an unpacked extension:
+1. `chrome://extensions`
+2. enable *Developer mode*
+3. *Load unpacked*
+4. select the repository folder.
+
+See https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked.
 
 ## Troubleshooting
 
