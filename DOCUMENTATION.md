@@ -68,7 +68,7 @@ On open, the popup:
 ├── static/
 │   ├── icon-*.png         # toolbar / store icons
 │   └── icon.svg           # source icon
-└── .github/               # CI workflows (lint, build) + dependabot
+└── .github/               # CI workflows (lint, test, build) + dependabot
 ```
 
 ## Usage
@@ -91,6 +91,9 @@ Here is the interface for each forge:
 
 | Member       | Purpose                                                            |
 | ------------ | ------------------------------------------------------------------ |
+| `label`      | human-readable forge name                                          |
+| `hostnames`  | array of hostnames (static forges only)                            |
+| `base_url`   | API URL (static forges only)                                       |
 | `parseUrl`   | `(URL) → { projectKey, repoSlug, filepath, origin }` or `null`     |
 | `listPRsUrl` | API endpoint listing the repo's open PRs                           |
 | `filesUrl`   | API endpoint listing a PR's modified files                         |

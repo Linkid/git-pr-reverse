@@ -4,6 +4,7 @@
 // unchanged.
 //
 // Adapter interface:
+//   label       human-readable forge name
 //   hostnames   array of substrings matched against the page hostname (static
 //               forges only; self-hosted forges are matched against the user's
 //               configured instance list instead)
@@ -16,7 +17,9 @@
 //   rateLimit   optional { url, header, remaining(data) }; null if the forge
 //               exposes no rate-limit endpoint
 
+// API docs: https://docs.github.com/en/rest/pulls
 export const github = {
+    label: "GitHub",
     hostnames: ["github.com"],
     base_url: "https://api.github.com",
 
