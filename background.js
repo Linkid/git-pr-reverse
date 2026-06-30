@@ -153,12 +153,15 @@ function checkRateLimitFromPRs(response) {
                 throw new Error(`Failed to list pull requests: [${response.status}] ${response.statusText}: ${data.message}`)
             }
 
+            // normalize the list response to an array of PRs (forge-specific)
+            const list = forge.pullRequests(data)
+
             // compare number of pull requests with rate limit
-            console.log("Number of pull requests:", data.length)
-            if (remaining !== null && remaining <= data.length) {
+            console.log("Number of pull requests:", list.length)
+            if (remaining !== null && remaining <= list.length) {
                 throw new Error("Rate limit reached!")
             }
-            return data
+            return list
         })
 
     return prs

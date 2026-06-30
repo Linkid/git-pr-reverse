@@ -52,6 +52,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "*://api.github.com/*"
+    "*://api.github.com/*",
+    "*://api.bitbucket.org/*"
   ]
 }

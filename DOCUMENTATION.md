@@ -106,9 +106,12 @@ authenticated forge needs no options-page change.
 
 For GitHub, create a [personal access token][gh-token] (classic or
 fine-grained) — no scope is required for public repositories; grant repository
-read access for private ones.
+read access for private ones. For Bitbucket Cloud, create a
+[repository, project or workspace access token][bb-token] (or an API token)
+with pull-request read access.
 
 [gh-token]: https://github.com/settings/tokens
+[bb-token]: https://support.atlassian.com/bitbucket-cloud/docs/access-tokens/
 
 ## Forges
 
@@ -125,6 +128,7 @@ Here is the interface for each forge:
 | `base_url`   | API URL (static forges only)                                       |
 | `parseUrl`   | `(URL) → { projectKey, repoSlug, filepath, origin }` or `null`     |
 | `listPRsUrl` | API endpoint listing the repo's open PRs                           |
+| `pullRequests` | `(listResponse) → array of PR objects` (unwraps paginated envelopes) |
 | `filesUrl`   | API endpoint listing a PR's modified files                         |
 | `filenames`  | filenames touched by a PR, from the files-endpoint response        |
 | `prNumber`   | identifier of a PR (used in URLs and displayed)                    |
@@ -144,7 +148,8 @@ So, to add a new forge:
 - in `tests/forges.test.js`, add tests.
 
 Supported forges:
-- **GitHub**: https://docs.github.com/en/rest/pulls.
+- **GitHub**: https://docs.github.com/en/rest/pulls
+- **Bitbucket** (Cloud): https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/.
 
 ## Internationalization
 

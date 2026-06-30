@@ -22,3 +22,4 @@ API rate limit and list pull requests from private repositories.
 ## Supported forges
 
 - GitHub
+- Bitbucket

@@ -1,13 +1,17 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { github, forgeForHostname } from "../forges.js"
+import { github, bitbucket, forgeForHostname } from "../forges.js"
 
 //
 // forgeForHostname
 //
 test("forgeForHostname matches github.com", () => {
     assert.equal(forgeForHostname("github.com"), github)
+})
+
+test("forgeForHostname matches bitbucket.org", () => {
+    assert.equal(forgeForHostname("bitbucket.org"), bitbucket)
 })
 
 test("forgeForHostname matches a subdomain containing the hostname", () => {
@@ -108,5 +112,80 @@ test("github.tokenStorageKey names the storage key for the token", () => {
 test("github.authHeader builds a Bearer Authorization header", () => {
     assert.deepEqual(github.authHeader("ghp_secret"), {
         Authorization: "Bearer ghp_secret",
+    })
+})
+
+test("github.pullRequests returns the list response as-is", () => {
+    const prs = [{ number: 1 }, { number: 2 }]
+    assert.equal(github.pullRequests(prs), prs)
+})
+
+//
+// bitbucket adapter
+//
+test("bitbucket.parseUrl extracts workspace, repo and filepath from a src URL", () => {
+    const url = new URL("https://bitbucket.org/acme/widget/src/main/src/app.js")
+    assert.deepEqual(bitbucket.parseUrl(url), {
+        projectKey: "acme",
+        repoSlug: "widget",
+        filepath: "src/app.js",
+        origin: "https://bitbucket.org",
+    })
+})
+
+test("bitbucket.parseUrl returns null for a non-file URL", () => {
+    assert.equal(bitbucket.parseUrl(new URL("https://bitbucket.org/acme/widget")), null)
+})
+
+test("bitbucket.listPRsUrl builds the pullrequests endpoint", () => {
+    const info = { projectKey: "acme", repoSlug: "widget" }
+    assert.equal(
+        bitbucket.listPRsUrl(info),
+        "https://api.bitbucket.org/2.0/repositories/acme/widget/pullrequests")
+})
+
+test("bitbucket.filesUrl builds the diffstat endpoint for a PR", () => {
+    const info = { projectKey: "acme", repoSlug: "widget" }
+    assert.equal(
+        bitbucket.filesUrl(info, { id: 7 }),
+        "https://api.bitbucket.org/2.0/repositories/acme/widget/pullrequests/7/diffstat")
+})
+
+test("bitbucket.prWebUrl builds the web URL of a PR", () => {
+    const info = { projectKey: "acme", repoSlug: "widget", origin: "https://bitbucket.org" }
+    assert.equal(
+        bitbucket.prWebUrl(info, 7),
+        "https://bitbucket.org/acme/widget/pull-requests/7")
+})
+
+test("bitbucket.prNumber reads the id off a PR object", () => {
+    assert.equal(bitbucket.prNumber({ id: 7, title: "ignored" }), 7)
+})
+
+test("bitbucket.pullRequests unwraps the paginated envelope", () => {
+    const data = { values: [{ id: 1 }, { id: 2 }], pagelen: 10 }
+    assert.deepEqual(bitbucket.pullRequests(data), [{ id: 1 }, { id: 2 }])
+})
+
+test("bitbucket.filenames reads the new path from diffstat entries", () => {
+    const diffstat = { values: [
+        { new: { path: "a.js" }, old: { path: "a.js" }, status: "modified" },
+        { new: { path: "dir/b.js" }, old: null, status: "added" },
+    ] }
+    assert.deepEqual(bitbucket.filenames(diffstat), ["a.js", "dir/b.js"])
+})
+
+test("bitbucket.filenames falls back to the old path for deletions", () => {
+    const diffstat = { values: [{ new: null, old: { path: "gone.js" }, status: "removed" }] }
+    assert.deepEqual(bitbucket.filenames(diffstat), ["gone.js"])
+})
+
+test("bitbucket exposes no rate-limit endpoint", () => {
+    assert.equal(bitbucket.rateLimit, null)
+})
+
+test("bitbucket.authHeader builds a Bearer Authorization header", () => {
+    assert.deepEqual(bitbucket.authHeader("bb_secret"), {
+        Authorization: "Bearer bb_secret",
     })
 })

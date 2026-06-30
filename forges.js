@@ -10,6 +10,7 @@
 //               configured instance list instead)
 //   parseUrl    (URL) -> { projectKey, repoSlug, filepath, origin } | null
 //   listPRsUrl  (info) -> API endpoint listing the repo's open pull requests
+//   pullRequests (listResponse) -> array of PR objects from the list response
 //   filesUrl    (info, pr) -> API endpoint listing a PR's modified files
 //   filenames   (filesResponse) -> array of filenames touched by a PR
 //   prNumber    (pr) -> identifier of a PR (used in URLs and displayed)
@@ -36,6 +37,11 @@ export const github = {
 
     listPRsUrl(info) {
         return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls`
+    },
+
+    // the list endpoint already returns a JSON array of PRs
+    pullRequests(data) {
+        return data
     },
 
     filesUrl(info, pr) {
@@ -70,8 +76,62 @@ export const github = {
     },
 }
 
+// API docs: https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
+// Bitbucket Cloud returns paginated `{ values: [...] }` envelopes and exposes a
+// PR's touched files through the diffstat endpoint.
+export const bitbucket = {
+    label: "Bitbucket",
+    hostnames: ["bitbucket.org"],
+    base_url: "https://api.bitbucket.org/2.0",
+
+    parseUrl(url) {
+        // file view: /{workspace}/{repo}/src/{revision}/{filepath}
+        const m = url.pathname.match(
+            "^/(?<projectKey>[^/]+)/(?<repoSlug>[^/]+)/src/[^/]+/(?<filepath>.+)$")
+        if (!m) return null
+        return { ...m.groups, origin: url.origin }
+    },
+
+    listPRsUrl(info) {
+        return `${this.base_url}/repositories/${info.projectKey}/${info.repoSlug}/pullrequests`
+    },
+
+    // the list endpoint wraps the PRs in a paginated envelope
+    pullRequests(data) {
+        return data.values
+    },
+
+    filesUrl(info, pr) {
+        return `${this.base_url}/repositories/${info.projectKey}/${info.repoSlug}/pullrequests/${this.prNumber(pr)}/diffstat`
+    },
+
+    filenames(files) {
+        // diffstat entries carry the new path (or the old path for deletions)
+        return files.values.map(file => (file.new || file.old).path)
+    },
+
+    prNumber(pr) {
+        return pr.id
+    },
+
+    prWebUrl(info, prNumber) {
+        return `${info.origin}/${info.projectKey}/${info.repoSlug}/pull-requests/${prNumber}`
+    },
+
+    // Bitbucket Cloud exposes no simple rate-limit endpoint.
+    rateLimit: null,
+
+    // Bitbucket Cloud accepts a repository/workspace access token or an API
+    // token as a Bearer credential.
+    tokenStorageKey: "bitbucketToken",
+
+    authHeader(token) {
+        return { Authorization: `Bearer ${token}` }
+    },
+}
+
 // registry of forges matched by a static hostname
-const staticForges = [github]
+const staticForges = [github, bitbucket]
 
 // pick a forge adapter for a page hostname (null if none matches).
 export function forgeForHostname(hostname) {
