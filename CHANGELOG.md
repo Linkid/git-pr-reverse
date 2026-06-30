@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.0 (2026-06-30)
+
+- ci(build): build and upload the Chrome artifact
+- feat(forges): support Bitbucket Cloud
+- feat: add Chrome support
+- feat: add optional authentication with a personal access token
+- refactor(forges): use a modular adapter interface
+- tests: init tests for JS scripts with CI
+
 ## v1.1.0 (2026-06-29)
 
 - chore(manifest): bump `strict_min_version` to 140.0
