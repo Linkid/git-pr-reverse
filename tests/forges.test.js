@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { github, bitbucket, forgeForHostname } from "../forges.js"
+import { github, bitbucket, codeberg, forgeForHostname } from "../forges.js"
 
 //
 // forgeForHostname
@@ -12,6 +12,10 @@ test("forgeForHostname matches github.com", () => {
 
 test("forgeForHostname matches bitbucket.org", () => {
     assert.equal(forgeForHostname("bitbucket.org"), bitbucket)
+})
+
+test("forgeForHostname matches codeberg.org", () => {
+    assert.equal(forgeForHostname("codeberg.org"), codeberg)
 })
 
 test("forgeForHostname matches a subdomain containing the hostname", () => {
@@ -187,5 +191,72 @@ test("bitbucket exposes no rate-limit endpoint", () => {
 test("bitbucket.authHeader builds a Bearer Authorization header", () => {
     assert.deepEqual(bitbucket.authHeader("bb_secret"), {
         Authorization: "Bearer bb_secret",
+    })
+})
+
+//
+// codeberg adapter (Forgejo / Gitea-compatible API)
+//
+test("codeberg.parseUrl extracts owner, repo and filepath from a src URL", () => {
+    const url = new URL("https://codeberg.org/forgejo/forgejo/src/branch/forgejo/README.md")
+    assert.deepEqual(codeberg.parseUrl(url), {
+        projectKey: "forgejo",
+        repoSlug: "forgejo",
+        filepath: "README.md",
+        origin: "https://codeberg.org",
+    })
+})
+
+test("codeberg.parseUrl keeps nested file paths intact", () => {
+    const url = new URL("https://codeberg.org/acme/widget/src/commit/deadbeef/dir/app.js")
+    assert.equal(codeberg.parseUrl(url).filepath, "dir/app.js")
+})
+
+test("codeberg.parseUrl returns null for a non-file URL", () => {
+    assert.equal(codeberg.parseUrl(new URL("https://codeberg.org/acme/widget")), null)
+})
+
+test("codeberg.listPRsUrl builds the pulls endpoint", () => {
+    const info = { projectKey: "acme", repoSlug: "widget" }
+    assert.equal(
+        codeberg.listPRsUrl(info),
+        "https://codeberg.org/api/v1/repos/acme/widget/pulls")
+})
+
+test("codeberg.filesUrl builds the files endpoint for a PR", () => {
+    const info = { projectKey: "acme", repoSlug: "widget" }
+    assert.equal(
+        codeberg.filesUrl(info, { number: 42 }),
+        "https://codeberg.org/api/v1/repos/acme/widget/pulls/42/files")
+})
+
+test("codeberg.prWebUrl builds the web URL of a PR", () => {
+    const info = { projectKey: "acme", repoSlug: "widget", origin: "https://codeberg.org" }
+    assert.equal(
+        codeberg.prWebUrl(info, 42),
+        "https://codeberg.org/acme/widget/pulls/42")
+})
+
+test("codeberg.prNumber reads the number off a PR object", () => {
+    assert.equal(codeberg.prNumber({ number: 7, title: "ignored" }), 7)
+})
+
+test("codeberg.pullRequests returns the list response as-is", () => {
+    const prs = [{ number: 1 }, { number: 2 }]
+    assert.equal(codeberg.pullRequests(prs), prs)
+})
+
+test("codeberg.filenames maps files to their filename", () => {
+    const files = [{ filename: "a.js" }, { filename: "dir/b.js" }]
+    assert.deepEqual(codeberg.filenames(files), ["a.js", "dir/b.js"])
+})
+
+test("codeberg exposes no rate-limit endpoint", () => {
+    assert.equal(codeberg.rateLimit, null)
+})
+
+test("codeberg.authHeader builds a token Authorization header", () => {
+    assert.deepEqual(codeberg.authHeader("cb_secret"), {
+        Authorization: "token cb_secret",
     })
 })

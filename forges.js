@@ -130,8 +130,60 @@ export const bitbucket = {
     },
 }
 
+// Codeberg is a public instance of Forgejo (a Gitea fork), so it speaks the
+// Gitea-compatible REST API served at https://codeberg.org/api/v1.
+// API docs: https://forgejo.org/docs/latest/user/api-usage/
+export const codeberg = {
+    label: "Codeberg",
+    hostnames: ["codeberg.org"],
+    base_url: "https://codeberg.org/api/v1",
+
+    parseUrl(url) {
+        // file view: /{owner}/{repo}/src/{branch|commit|tag}/{ref}/{filepath}
+        const m = url.pathname.match(
+            "^/(?<projectKey>[^/]+)/(?<repoSlug>[^/]+)/src/[^/]+/[^/]+/(?<filepath>.+)$")
+        if (!m) return null
+        return { ...m.groups, origin: url.origin }
+    },
+
+    listPRsUrl(info) {
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls`
+    },
+
+    // the list endpoint returns a JSON array of PRs
+    pullRequests(data) {
+        return data
+    },
+
+    filesUrl(info, pr) {
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls/${this.prNumber(pr)}/files`
+    },
+
+    filenames(files) {
+        return files.map(file => file.filename)
+    },
+
+    prNumber(pr) {
+        return pr.number
+    },
+
+    prWebUrl(info, prNumber) {
+        return `${info.origin}/${info.projectKey}/${info.repoSlug}/pulls/${prNumber}`
+    },
+
+    // Codeberg exposes no simple rate-limit endpoint.
+    rateLimit: null,
+
+    // Codeberg accepts a personal access token via the Gitea `token` scheme.
+    tokenStorageKey: "codebergToken",
+
+    authHeader(token) {
+        return { Authorization: `token ${token}` }
+    },
+}
+
 // registry of forges matched by a static hostname
-const staticForges = [github, bitbucket]
+const staticForges = [github, bitbucket, codeberg]
 
 // pick a forge adapter for a page hostname (null if none matches).
 export function forgeForHostname(hostname) {
