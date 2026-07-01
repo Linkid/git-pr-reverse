@@ -4,11 +4,10 @@ import { forgeForHostname } from './forges.js'
 //
 // Main
 //
-let forge = new Object()
-let urlInfo = new Object()
-// headers sent with every forge API request; populated from the stored token
-// (empty when the forge supports no auth or the user configured no token)
-let requestHeaders = {}
+// Per-tab state (forge, urlInfo, requestHeaders) is created in main() and
+// passed to each helper, so concurrent tab updates never clobber each other.
+// requestHeaders holds the forge API auth headers built from the stored token
+// (empty when the forge supports no auth or the user configured no token).
 
 // register the extension against the browser (skipped when this module is
 // imported outside a WebExtension context, e.g. by the test runner, where the
@@ -52,7 +51,7 @@ async function loadAuthHeaders(forge) {
 
 // fetch all pull requests
 // returns a promise with the list of pull requests
-async function listAllPRs() {
+async function listAllPRs(forge, urlInfo, requestHeaders) {
     console.log("List all pull requests")
 
     const request = new Request(forge.listPRsUrl(urlInfo), { headers: requestHeaders })
@@ -66,7 +65,7 @@ async function listAllPRs() {
 
 // fetch modified files of a pull request
 // returns a promise with the list of modified files for a pull request
-async function getModifiedFiles(pr) {
+async function getModifiedFiles(forge, urlInfo, requestHeaders, pr) {
     // fetch the API
     const request = new Request(forge.filesUrl(urlInfo, pr), { headers: requestHeaders })
 
@@ -96,16 +95,16 @@ export function addIfIncluded(array, item, key) {
 // get all pull requests containing a file
 // returns a list of promises, each resolving to a PR number (or null); the
 // per-PR file fetches run concurrently and the caller awaits them together
-function getFilesPRs(prs) {
+export function getFilesPRs(forge, urlInfo, requestHeaders, prs) {
     return prs.map(async pr => {
-        const files = await getModifiedFiles(pr)
+        const files = await getModifiedFiles(forge, urlInfo, requestHeaders, pr)
         const filenames = getFilenames(forge, files)
         return addIfIncluded(filenames, urlInfo.filepath, forge.prNumber(pr))
     })
 }
 
 // check the rate limit
-async function checkRateLimit() {
+async function checkRateLimit(forge, requestHeaders) {
     // forges without a rate-limit endpoint skip this check
     if (!forge.rateLimit) {
         return
@@ -129,7 +128,7 @@ async function checkRateLimit() {
 }
 
 // check the rate limit comparing to PRs length
-async function checkRateLimitFromPRs(response) {
+async function checkRateLimitFromPRs(forge, response) {
     // get the rate limit header (forges without one skip the comparison)
     const remaining = forge.rateLimit ? response.headers.get(forge.rateLimit.header) : null
     console.log("Rate limit remaining (from header):", remaining)
@@ -169,29 +168,28 @@ async function main(tab) {
     const url = new URL(tab.url)
 
     // get the forge adapter by hostname
-    forge = forgeForHostname(url.hostname)
+    const forge = forgeForHostname(url.hostname)
     if (forge == null) {
         return
     }
     browser.action.enable(tab.id)
 
     // get project info from the URL (forge-specific parsing)
-    const info = forge.parseUrl(url)
-    if (info == null) {
+    const urlInfo = forge.parseUrl(url)
+    if (urlInfo == null) {
         browser.action.disable(tab.id)
         return
     }
-    urlInfo = info
 
     try {
         // load the stored API token, then check the forge rate limit
-        requestHeaders = await loadAuthHeaders(forge)
-        await checkRateLimit()
+        const requestHeaders = await loadAuthHeaders(forge)
+        await checkRateLimit(forge, requestHeaders)
 
         // list pull requests, then keep those that touch the file
-        const response = await listAllPRs()
-        const prs = await checkRateLimitFromPRs(response)
-        const values = await Promise.all(getFilesPRs(prs))
+        const response = await listAllPRs(forge, urlInfo, requestHeaders)
+        const prs = await checkRateLimitFromPRs(forge, response)
+        const values = await Promise.all(getFilesPRs(forge, urlInfo, requestHeaders, prs))
 
         // render (dropping the PRs that don't touch the file)
         render(values.filter(x => x), tab.id)
