@@ -66,21 +66,22 @@ function renderForges() {
 }
 
 // fill each forge input from the stored token
-function loadTokens() {
-    browser.storage.local.get()
-        .then(stored => {
-            for (const input of document.querySelectorAll("#forges input")) {
-                const value = stored[input.dataset.storageKey]
-                if (value) {
-                    input.value = value
-                }
+async function loadTokens() {
+    try {
+        const stored = await browser.storage.local.get()
+        for (const input of document.querySelectorAll("#forges input")) {
+            const value = stored[input.dataset.storageKey]
+            if (value) {
+                input.value = value
             }
-        })
-        .catch(error => console.error(`Error: ${error}`))
+        }
+    } catch (error) {
+        console.error(`Error: ${error}`)
+    }
 }
 
 // save every forge token: store the non-empty ones, drop the emptied ones
-function saveTokens(event) {
+async function saveTokens(event) {
     event.preventDefault()
 
     const toSet = {}
@@ -94,25 +95,31 @@ function saveTokens(event) {
         }
     }
 
-    Promise.all([
-        browser.storage.local.set(toSet),
-        browser.storage.local.remove(toRemove),
-    ])
-        .then(() => showStatus("optionsSaved"))
-        .catch(error => console.error(`Error: ${error}`))
+    try {
+        await Promise.all([
+            browser.storage.local.set(toSet),
+            browser.storage.local.remove(toRemove),
+        ])
+        showStatus("optionsSaved")
+    } catch (error) {
+        console.error(`Error: ${error}`)
+    }
 }
 
 // remove every forge token
-function clearTokens() {
+async function clearTokens() {
     const keys = []
     for (const input of document.querySelectorAll("#forges input")) {
         input.value = ""
         keys.push(input.dataset.storageKey)
     }
 
-    browser.storage.local.remove(keys)
-        .then(() => showStatus("optionsCleared"))
-        .catch(error => console.error(`Error: ${error}`))
+    try {
+        await browser.storage.local.remove(keys)
+        showStatus("optionsCleared")
+    } catch (error) {
+        console.error(`Error: ${error}`)
+    }
 }
 
 //

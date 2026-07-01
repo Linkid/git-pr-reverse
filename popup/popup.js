@@ -79,31 +79,25 @@ function localize() {
 // Main
 //
 localize()
-browser.tabs.query({active: true, currentWindow: true})
-    .then(tabs => {
-        // get the first tab object in the array
-        const tabInfo = tabs.pop()
+async function init() {
+    // get the active tab
+    const tabs = await browser.tabs.query({active: true, currentWindow: true})
+    const tabInfo = tabs.pop()
+    const tabId = tabInfo.id
 
-        // get the tabId
-        const tabId = tabInfo.id
+    // get url info
+    const urlInfo = getUrlInfo(tabInfo)
+    if (!urlInfo) {
+        return
+    }
 
-        // get url info
-        const urlInfo = getUrlInfo(tabInfo)
-        if (!urlInfo) {
-            return
-        }
-
-        // get the prs list
-        browser.storage.local.get()
-            // render
-            .then(result => {
-                if (result.tabId == tabId) {
-                    render(result.prs, urlInfo)
-                } else {
-                    // error in bg script
-                    renderError(urlInfo)
-                }
-            })
-            .catch(error => console.error(`Error: ${error}`))
-    })
-    .catch(error => console.error(`Error: ${error}`))
+    // get the prs list and render
+    const result = await browser.storage.local.get()
+    if (result.tabId == tabId) {
+        render(result.prs, urlInfo)
+    } else {
+        // error in bg script
+        renderError(urlInfo)
+    }
+}
+init().catch(error => console.error(`Error: ${error}`))
