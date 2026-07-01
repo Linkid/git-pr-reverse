@@ -109,11 +109,13 @@ fine-grained) — no scope is required for public repositories; grant repository
 read access for private ones. For Bitbucket Cloud, create a
 [repository, project or workspace access token][bb-token] (or an API token)
 with pull-request read access. For Codeberg, create an [access token][cb-token]
-in your account settings with repository read scope.
+in your account settings with repository read scope. For GitLab, create a
+[personal or project access token][gl-token] with the `read_api` scope.
 
 [gh-token]: https://github.com/settings/tokens
 [bb-token]: https://support.atlassian.com/bitbucket-cloud/docs/access-tokens/
 [cb-token]: https://docs.codeberg.org/advanced/access-token/
+[gl-token]: https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html
 
 ## Forges
 
@@ -152,7 +154,8 @@ So, to add a new forge:
 Supported forges:
 - **GitHub**: https://docs.github.com/en/rest/pulls
 - **Bitbucket** (Cloud): https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
-- **Codeberg** (Forgejo, Gitea-compatible API): https://forgejo.org/docs/latest/user/api-usage/.
+- **Codeberg** (Forgejo, Gitea-compatible API): https://forgejo.org/docs/latest/user/api-usage/
+- **GitLab**: https://docs.gitlab.com/ee/api/merge_requests.html.
 
 ## Internationalization
 

@@ -182,8 +182,73 @@ export const codeberg = {
     },
 }
 
+// API docs: https://docs.gitlab.com/ee/api/merge_requests.html
+// GitLab calls PRs "merge requests" and identifies a project by its full,
+// URL-encoded path (namespaces can be nested: group/subgroup/project), so the
+// adapter carries a single `projectPath` in `info` rather than a projectKey /
+// repoSlug pair. The `/-/` separator in web URLs delimits the project path from
+// the route type (blob, merge_requests, …).
+export const gitlab = {
+    label: "GitLab",
+    hostnames: ["gitlab.com"],
+    base_url: "https://gitlab.com/api/v4",
+
+    parseUrl(url) {
+        // file view: /{group}/.../{project}/-/blob/{ref}/{filepath}
+        const m = url.pathname.match(
+            "^/(?<projectPath>.+?)/-/blob/[^/]+/(?<filepath>.+)$")
+        if (!m) return null
+        return { ...m.groups, origin: url.origin }
+    },
+
+    // the project is addressed by its URL-encoded full path
+    projectId(info) {
+        return encodeURIComponent(info.projectPath)
+    },
+
+    listPRsUrl(info) {
+        // /merge_requests defaults to every state, so filter to the open ones
+        return `${this.base_url}/projects/${this.projectId(info)}/merge_requests?state=opened`
+    },
+
+    // the list endpoint returns a JSON array of merge requests
+    pullRequests(data) {
+        return data
+    },
+
+    filesUrl(info, pr) {
+        return `${this.base_url}/projects/${this.projectId(info)}/merge_requests/${this.prNumber(pr)}/diffs`
+    },
+
+    // a diff entry keeps new_path == old_path for deletions, so new_path is safe
+    filenames(files) {
+        return files.map(file => file.new_path)
+    },
+
+    // iid is the project-internal number shown in URLs (id is global)
+    prNumber(pr) {
+        return pr.iid
+    },
+
+    prWebUrl(info, prNumber) {
+        return `${info.origin}/${info.projectPath}/-/merge_requests/${prNumber}`
+    },
+
+    // GitLab exposes rate-limit info only through response headers, not a
+    // pollable endpoint.
+    rateLimit: null,
+
+    // GitLab accepts a personal or project access token via the PRIVATE-TOKEN
+    // header. Authenticating grants access to private repositories.
+    tokenStorageKey: "gitlabToken",
+
+    authHeader(token) {
+        return { "PRIVATE-TOKEN": token }
+    },
+}
+
 // registry of forges matched by a static hostname
-const staticForges = [github, bitbucket, codeberg]
+const staticForges = [github, bitbucket, codeberg, gitlab]
 
 // pick a forge adapter for a page hostname (null if none matches).
 export function forgeForHostname(hostname) {

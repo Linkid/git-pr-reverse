@@ -24,3 +24,4 @@ API rate limit and list pull requests from private repositories.
 - GitHub
 - Bitbucket
 - Codeberg
+- GitLab

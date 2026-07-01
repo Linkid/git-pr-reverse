@@ -54,6 +54,7 @@
   "host_permissions": [
     "*://api.github.com/*",
     "*://api.bitbucket.org/*",
-    "*://codeberg.org/*"
+    "*://codeberg.org/*",
+    "*://gitlab.com/*"
   ]
 }

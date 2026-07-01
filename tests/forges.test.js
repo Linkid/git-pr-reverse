@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { github, bitbucket, codeberg, forgeForHostname } from "../forges.js"
+import { github, bitbucket, codeberg, gitlab, forgeForHostname } from "../forges.js"
 
 //
 // forgeForHostname
@@ -18,13 +18,16 @@ test("forgeForHostname matches codeberg.org", () => {
     assert.equal(forgeForHostname("codeberg.org"), codeberg)
 })
 
+test("forgeForHostname matches gitlab.com", () => {
+    assert.equal(forgeForHostname("gitlab.com"), gitlab)
+})
+
 test("forgeForHostname matches a subdomain containing the hostname", () => {
     // hostnames are matched as substrings of the page hostname
     assert.equal(forgeForHostname("www.github.com"), github)
 })
 
 test("forgeForHostname returns null for an unknown forge", () => {
-    assert.equal(forgeForHostname("gitlab.com"), null)
     assert.equal(forgeForHostname("example.com"), null)
 })
 
@@ -258,5 +261,73 @@ test("codeberg exposes no rate-limit endpoint", () => {
 test("codeberg.authHeader builds a token Authorization header", () => {
     assert.deepEqual(codeberg.authHeader("cb_secret"), {
         Authorization: "token cb_secret",
+    })
+})
+
+//
+// gitlab adapter (merge requests, nested namespaces, URL-encoded project path)
+//
+test("gitlab.parseUrl extracts the project path and filepath from a blob URL", () => {
+    const url = new URL("https://gitlab.com/gitlab-org/gitlab/-/blob/master/README.md")
+    assert.deepEqual(gitlab.parseUrl(url), {
+        projectPath: "gitlab-org/gitlab",
+        filepath: "README.md",
+        origin: "https://gitlab.com",
+    })
+})
+
+test("gitlab.parseUrl keeps nested group namespaces in the project path", () => {
+    const url = new URL("https://gitlab.com/group/subgroup/widget/-/blob/main/dir/app.js")
+    const info = gitlab.parseUrl(url)
+    assert.equal(info.projectPath, "group/subgroup/widget")
+    assert.equal(info.filepath, "dir/app.js")
+})
+
+test("gitlab.parseUrl returns null for a non-file URL", () => {
+    assert.equal(gitlab.parseUrl(new URL("https://gitlab.com/acme/widget")), null)
+})
+
+test("gitlab.listPRsUrl builds the merge_requests endpoint with the encoded path", () => {
+    const info = { projectPath: "group/subgroup/widget" }
+    assert.equal(
+        gitlab.listPRsUrl(info),
+        "https://gitlab.com/api/v4/projects/group%2Fsubgroup%2Fwidget/merge_requests?state=opened")
+})
+
+test("gitlab.filesUrl builds the diffs endpoint for a merge request", () => {
+    const info = { projectPath: "acme/widget" }
+    assert.equal(
+        gitlab.filesUrl(info, { iid: 42 }),
+        "https://gitlab.com/api/v4/projects/acme%2Fwidget/merge_requests/42/diffs")
+})
+
+test("gitlab.prWebUrl builds the web URL of a merge request", () => {
+    const info = { projectPath: "acme/widget", origin: "https://gitlab.com" }
+    assert.equal(
+        gitlab.prWebUrl(info, 42),
+        "https://gitlab.com/acme/widget/-/merge_requests/42")
+})
+
+test("gitlab.prNumber reads the iid off a merge request object", () => {
+    assert.equal(gitlab.prNumber({ id: 999, iid: 7, title: "ignored" }), 7)
+})
+
+test("gitlab.pullRequests returns the list response as-is", () => {
+    const mrs = [{ iid: 1 }, { iid: 2 }]
+    assert.equal(gitlab.pullRequests(mrs), mrs)
+})
+
+test("gitlab.filenames maps diff entries to their new_path", () => {
+    const files = [{ new_path: "a.js", old_path: "a.js" }, { new_path: "dir/b.js", old_path: "dir/b.js" }]
+    assert.deepEqual(gitlab.filenames(files), ["a.js", "dir/b.js"])
+})
+
+test("gitlab exposes no rate-limit endpoint", () => {
+    assert.equal(gitlab.rateLimit, null)
+})
+
+test("gitlab.authHeader builds a PRIVATE-TOKEN header", () => {
+    assert.deepEqual(gitlab.authHeader("gl_secret"), {
+        "PRIVATE-TOKEN": "gl_secret",
     })
 })
