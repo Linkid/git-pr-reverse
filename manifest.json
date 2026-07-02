@@ -56,5 +56,8 @@
     "*://api.bitbucket.org/*",
     "*://codeberg.org/*",
     "*://gitlab.com/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
   ]
 }

@@ -1,7 +1,11 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { github, bitbucket, codeberg, gitlab, forgeForHostname } from "../forges.js"
+import {
+    github, bitbucket, codeberg, gitlab,
+    forgeForHostname,
+    selfHostedTypes, selfHostedTokenKey, buildSelfHostedForge,
+} from "../forges.js"
 
 //
 // forgeForHostname
@@ -330,4 +334,78 @@ test("gitlab.authHeader builds a PRIVATE-TOKEN header", () => {
     assert.deepEqual(gitlab.authHeader("gl_secret"), {
         "PRIVATE-TOKEN": "gl_secret",
     })
+})
+
+//
+// self-hosted forges
+//
+test("selfHostedTypes lists the supported software with labels", () => {
+    assert.deepEqual(selfHostedTypes(), [
+        { type: "gitlab", label: "GitLab" },
+        { type: "forgejo", label: "Forgejo / Gitea" },
+    ])
+})
+
+test("selfHostedTokenKey keys the token by hostname", () => {
+    assert.equal(selfHostedTokenKey("git.example.com"), "selfHostedToken:git.example.com")
+})
+
+test("buildSelfHostedForge returns null for an unknown software type", () => {
+    assert.equal(buildSelfHostedForge({ type: "svn", hostname: "git.example.com" }), null)
+})
+
+test("buildSelfHostedForge builds a GitLab instance adapter reusing the gitlab logic", () => {
+    const forge = buildSelfHostedForge({ type: "gitlab", hostname: "gitlab.example.com" })
+
+    assert.equal(forge.label, "gitlab.example.com")
+    assert.deepEqual(forge.hostnames, ["gitlab.example.com"])
+    assert.equal(forge.base_url, "https://gitlab.example.com/api/v4")
+    assert.equal(forge.tokenStorageKey, "selfHostedToken:gitlab.example.com")
+    assert.equal(forge.selfHosted, true)
+
+    // API/URL builders reuse the gitlab implementation against the instance
+    const info = { projectPath: "group/widget", origin: "https://gitlab.example.com" }
+    assert.equal(
+        forge.listPRsUrl(info),
+        "https://gitlab.example.com/api/v4/projects/group%2Fwidget/merge_requests?state=opened")
+    assert.equal(forge.prNumber({ iid: 7 }), 7)
+    assert.deepEqual(forge.authHeader("gl_secret"), { "PRIVATE-TOKEN": "gl_secret" })
+})
+
+test("buildSelfHostedForge builds a Forgejo instance adapter reusing the codeberg logic", () => {
+    const forge = buildSelfHostedForge({ type: "forgejo", hostname: "git.example.com" })
+
+    assert.equal(forge.base_url, "https://git.example.com/api/v1")
+    const info = { projectKey: "acme", repoSlug: "widget" }
+    assert.equal(
+        forge.filesUrl(info, { number: 42 }),
+        "https://git.example.com/api/v1/repos/acme/widget/pulls/42/files")
+    assert.deepEqual(forge.authHeader("cb_secret"), { Authorization: "token cb_secret" })
+})
+
+test("the public instance and a self-hosted instance share one family", () => {
+    // the inversion: gitlab.com is itself an instanceOf the GitLab family, the
+    // same family a self-hosted GitLab is built from, so they share a prototype
+    const selfHosted = buildSelfHostedForge({ type: "gitlab", hostname: "gitlab.example.com" })
+    assert.equal(Object.getPrototypeOf(gitlab), Object.getPrototypeOf(selfHosted))
+
+    const selfHostedForgejo = buildSelfHostedForge({ type: "forgejo", hostname: "git.example.com" })
+    assert.equal(Object.getPrototypeOf(codeberg), Object.getPrototypeOf(selfHostedForgejo))
+})
+
+test("forgeForHostname matches a configured self-hosted instance", () => {
+    const instances = [{ type: "gitlab", hostname: "gitlab.example.com" }]
+    const forge = forgeForHostname("gitlab.example.com", instances)
+    assert.equal(forge.base_url, "https://gitlab.example.com/api/v4")
+    assert.equal(forge.selfHosted, true)
+})
+
+test("forgeForHostname prefers a static forge over instances", () => {
+    const instances = [{ type: "gitlab", hostname: "github.com" }]
+    assert.equal(forgeForHostname("github.com", instances), github)
+})
+
+test("forgeForHostname matches a self-hosted instance by exact hostname only", () => {
+    const instances = [{ type: "forgejo", hostname: "git.example.com" }]
+    assert.equal(forgeForHostname("other.example.com", instances), null)
 })

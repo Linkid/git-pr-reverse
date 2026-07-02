@@ -163,15 +163,32 @@ function render(prs, tabId) {
     browser.storage.local.set({ tabId, prs })
 }
 
+// load the user's configured self-hosted instances from storage
+// returns an array of { type, hostname } (empty when none configured)
+async function loadInstances() {
+    const stored = await browser.storage.local.get("selfHostedInstances")
+    return stored.selfHostedInstances || []
+}
+
 async function main(tab) {
     // split the url
     const url = new URL(tab.url)
 
-    // get the forge adapter by hostname
-    const forge = forgeForHostname(url.hostname)
+    // get the forge adapter by hostname, considering configured self-hosted
+    // instances alongside the built-in forges
+    const instances = await loadInstances()
+    const forge = forgeForHostname(url.hostname, instances)
     if (forge == null) {
         return
     }
+
+    // self-hosted instances need an optional host permission before the
+    // extension may call their API; skip quietly until the user grants it
+    if (forge.selfHosted &&
+        !(await browser.permissions.contains({ origins: [`*://${url.hostname}/*`] }))) {
+        return
+    }
+
     browser.action.enable(tab.id)
 
     // get project info from the URL (forge-specific parsing)

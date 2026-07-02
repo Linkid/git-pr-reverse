@@ -46,5 +46,45 @@
   "optionsCleared": {
     "message": "",
     "description": ""
+  },
+  "optionsSelfHostedTitle": {
+    "message": "",
+    "description": ""
+  },
+  "optionsSelfHostedHint": {
+    "message": "",
+    "description": ""
+  },
+  "optionsAddInstance": {
+    "message": "",
+    "description": ""
+  },
+  "optionsHostnamePlaceholder": {
+    "message": "",
+    "description": ""
+  },
+  "optionsRemove": {
+    "message": "",
+    "description": ""
+  },
+  "optionsInvalidHostname": {
+    "message": "",
+    "description": ""
+  },
+  "optionsInstanceExists": {
+    "message": "",
+    "description": ""
+  },
+  "optionsInstanceAdded": {
+    "message": "",
+    "description": ""
+  },
+  "optionsInstanceRemoved": {
+    "message": "",
+    "description": ""
+  },
+  "optionsPermissionDenied": {
+    "message": "",
+    "description": ""
   }
 }

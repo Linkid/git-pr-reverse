@@ -102,7 +102,8 @@ as an `Authorization` header to that forge's API.
 
 The options page is forge-agnostic: it renders one token field per forge that
 declares authentication support (see `authForges()` in `forges.js`), so a new
-authenticated forge needs no options-page change.
+authenticated forge needs no options-page change. Self-hosted instances (see
+[Forges](#forges)) get their own token field too, keyed per instance.
 
 For GitHub, create a [personal access token][gh-token] (classic or
 fine-grained) — no scope is required for public repositories; grant repository
@@ -121,15 +122,18 @@ in your account settings with repository read scope. For GitLab, create a
 
 Forge endpoints are configured in `forges.js`, which defines one **adapter**
 per forge that normalizes its API and URL quirks behind a common interface,
-plus a `forgeForHostname()` registry lookup.
+plus a `forgeForHostname()` registry lookup. Single-host forges (GitHub,
+Bitbucket) are plain adapter objects; multi-host forges (GitLab, Forgejo/Gitea)
+are *families* whose instances — public and self-hosted alike — are built with
+`instanceOf()` (see [Families and self-hosted forges](#families-and-self-hosted-forges)).
 
 Here is the interface for each forge:
 
 | Member       | Purpose                                                            |
 | ------------ | ------------------------------------------------------------------ |
 | `label`      | human-readable forge name                                          |
-| `hostnames`  | array of hostnames (static forges only)                            |
-| `base_url`   | API URL (static forges only)                                       |
+| `hostnames`  | array of hostnames matched against the page (one per family instance) |
+| `base_url`   | API root URL the endpoint builders are hung off of                |
 | `parseUrl`   | `(URL) → { projectKey, repoSlug, filepath, origin }` or `null`     |
 | `listPRsUrl` | API endpoint listing the repo's open PRs                           |
 | `pullRequests` | `(listResponse) → array of PR objects` (unwraps paginated envelopes) |
@@ -156,6 +160,32 @@ Supported forges:
 - **Bitbucket** (Cloud): https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
 - **Codeberg** (Forgejo, Gitea-compatible API): https://forgejo.org/docs/latest/user/api-usage/
 - **GitLab**: https://docs.gitlab.com/ee/api/merge_requests.html.
+
+### Families and self-hosted forges
+
+A forge's API and URL layout are the same across every host running the same
+software, so `forges.js` factors that shared logic into a *family* and builds
+concrete adapters from it with `instanceOf(family, { hostname, … })`. Both the
+built-in public forges and the user's self-hosted forges are built this way, so
+a self-hosted forge is just an `instanceOf` created at runtime by
+`buildSelfHostedForge()` from an instance the user configured.
+
+Users add instances (a hostname and which software family it runs) on the
+options page; they are stored under `selfHostedInstances` in
+`browser.storage.local`, and `forgeForHostname()` matches a page against the
+built-in forges first, then those instances.
+
+Because Manifest V3 cannot declare arbitrary hosts up front, the options page
+**requests the host permission** for an instance when it is added and releases
+it on removal (both need `optional_host_permissions`); the background script
+skips an instance until its permission is granted.
+
+Supported self-hosted software:
+- **GitLab** (CE/EE): https://docs.gitlab.com/ee/api/merge_requests.html
+- **Forgejo / Gitea**: https://forgejo.org/docs/latest/user/api-usage/
+
+To support new self-hosted software, define its family and add it to
+`selfHostedFamilies`.
 
 ## Internationalization
 

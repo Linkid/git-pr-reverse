@@ -22,3 +22,16 @@ body { background: var(--bg); color: var(--fg); }
 }
 .options__actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 .options__status { color: var(--muted); min-height: 1.2em; }
+
+.options__self-hosted {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  border-top: 1px solid var(--border); padding-top: 0.75rem;
+}
+.options__subtitle { margin: 0; }
+.options__add { display: flex; gap: 0.5rem; align-items: center; }
+.options__add .options__input { flex: 1; }
+.options__remove, .options__add-btn {
+  align-self: flex-start;
+  padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); color: var(--fg); cursor: pointer;
+}

@@ -4,12 +4,14 @@ import { forgeForHostname } from "../forges.js"
 //
 // Functions
 //
-function getUrlInfo(tab) {
+async function getUrlInfo(tab) {
     // split the url
     const url = new URL(tab.url)
 
-    // pick the forge adapter and parse the URL through it (null on a non-forge / non-file page)
-    const forge = forgeForHostname(url.hostname)
+    // pick the forge adapter (built-in or a configured self-hosted instance)
+    // and parse the URL through it (null on a non-forge / non-file page)
+    const stored = await browser.storage.local.get("selfHostedInstances")
+    const forge = forgeForHostname(url.hostname, stored.selfHostedInstances || [])
     if (!forge) return null
     const info = forge.parseUrl(url)
     if (!info) return null
@@ -86,7 +88,7 @@ async function init() {
     const tabId = tabInfo.id
 
     // get url info
-    const urlInfo = getUrlInfo(tabInfo)
+    const urlInfo = await getUrlInfo(tabInfo)
     if (!urlInfo) {
         return
     }

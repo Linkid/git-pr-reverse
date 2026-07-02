@@ -1,13 +1,16 @@
 // Each forge is an adapter that normalizes its API + URL quirks behind a common
-// interface used by background.js and popup.js. Adding a new forge is a new
-// adapter object here (plus a host permission); background.js / popup.js stay
-// unchanged.
+// interface used by background.js and popup.js. A single-host forge is a plain
+// adapter object here; a forge whose software can run on many hosts is
+// expressed as a *family* holding the shared logic, from which the public
+// instance and any self-hosted instances are built with instanceOf() (see
+// below). Adding a forge (plus a host permission) leaves background.js /
+// popup.js unchanged.
 //
 // Adapter interface:
 //   label       human-readable forge name, shown in the options page UI
-//   hostnames   array of substrings matched against the page hostname (static
-//               forges only; self-hosted forges are matched against the user's
-//               configured instance list instead)
+//   hostnames   array of substrings matched against the page hostname (for a
+//               family instance this is its single configured hostname)
+//   base_url    API root URL the endpoint builders below are hung off of
 //   parseUrl    (URL) -> { projectKey, repoSlug, filepath, origin } | null
 //   listPRsUrl  (info) -> API endpoint listing the repo's open pull requests
 //   pullRequests (listResponse) -> array of PR objects from the list response
@@ -130,13 +133,32 @@ export const bitbucket = {
     },
 }
 
-// Codeberg is a public instance of Forgejo (a Gitea fork), so it speaks the
-// Gitea-compatible REST API served at https://codeberg.org/api/v1.
+// Forge software can run on many hosts (a public instance plus any number of
+// self-hosted ones), all speaking the same API with the same URL layout. That
+// shared behaviour lives in a forge *family*; a concrete adapter is an
+// *instance* of a family, differing only by hostname, API base URL and token
+// key. instanceOf() specialises a family into an adapter — used both for the
+// built-in public instances below and for the user's self-hosted instances (see
+// buildSelfHostedForge). A family therefore owns every interface member except
+// `label`, `hostnames`, `base_url` and `tokenStorageKey`, which the instance
+// supplies.
+//
+// `apiPath` is the family's API root; appended to the instance origin it forms
+// base_url, so the public and self-hosted instances share one code path.
+function instanceOf(family, { hostname, label, tokenStorageKey }) {
+    return Object.assign(Object.create(family), {
+        label: label ?? hostname,
+        hostnames: [hostname],
+        base_url: `https://${hostname}${family.apiPath}`,
+        tokenStorageKey,
+    })
+}
+
+// Forgejo / Gitea family: speaks the Gitea-compatible REST API under /api/v1.
 // API docs: https://forgejo.org/docs/latest/user/api-usage/
-export const codeberg = {
-    label: "Codeberg",
-    hostnames: ["codeberg.org"],
-    base_url: "https://codeberg.org/api/v1",
+const forgejoFamily = {
+    label: "Forgejo / Gitea",
+    apiPath: "/api/v1",
 
     parseUrl(url) {
         // file view: /{owner}/{repo}/src/{branch|commit|tag}/{ref}/{filepath}
@@ -171,27 +193,31 @@ export const codeberg = {
         return `${info.origin}/${info.projectKey}/${info.repoSlug}/pulls/${prNumber}`
     },
 
-    // Codeberg exposes no simple rate-limit endpoint.
+    // Forgejo/Gitea exposes no simple rate-limit endpoint.
     rateLimit: null,
 
-    // Codeberg accepts a personal access token via the Gitea `token` scheme.
-    tokenStorageKey: "codebergToken",
-
+    // Forgejo/Gitea accepts a personal access token via the `token` scheme.
     authHeader(token) {
         return { Authorization: `token ${token}` }
     },
 }
 
+// Codeberg is the public Forgejo instance.
+export const codeberg = instanceOf(forgejoFamily, {
+    hostname: "codeberg.org",
+    label: "Codeberg",
+    tokenStorageKey: "codebergToken",
+})
+
+// GitLab family: calls PRs "merge requests" and identifies a project by its
+// full, URL-encoded path (namespaces can be nested: group/subgroup/project), so
+// `info` carries a single `projectPath` rather than a projectKey / repoSlug
+// pair. The `/-/` separator in web URLs delimits the project path from the
+// route type (blob, merge_requests, …).
 // API docs: https://docs.gitlab.com/ee/api/merge_requests.html
-// GitLab calls PRs "merge requests" and identifies a project by its full,
-// URL-encoded path (namespaces can be nested: group/subgroup/project), so the
-// adapter carries a single `projectPath` in `info` rather than a projectKey /
-// repoSlug pair. The `/-/` separator in web URLs delimits the project path from
-// the route type (blob, merge_requests, …).
-export const gitlab = {
+const gitlabFamily = {
     label: "GitLab",
-    hostnames: ["gitlab.com"],
-    base_url: "https://gitlab.com/api/v4",
+    apiPath: "/api/v4",
 
     parseUrl(url) {
         // file view: /{group}/.../{project}/-/blob/{ref}/{filepath}
@@ -240,23 +266,78 @@ export const gitlab = {
 
     // GitLab accepts a personal or project access token via the PRIVATE-TOKEN
     // header. Authenticating grants access to private repositories.
-    tokenStorageKey: "gitlabToken",
-
     authHeader(token) {
         return { "PRIVATE-TOKEN": token }
     },
 }
 
+// gitlab.com is the public GitLab instance.
+export const gitlab = instanceOf(gitlabFamily, {
+    hostname: "gitlab.com",
+    tokenStorageKey: "gitlabToken",
+})
+
 // registry of forges matched by a static hostname
 const staticForges = [github, bitbucket, codeberg, gitlab]
-
-// pick a forge adapter for a page hostname (null if none matches).
-export function forgeForHostname(hostname) {
-    return staticForges.find(f => f.hostnames.some(h => hostname.includes(h))) || null
-}
 
 // forges that support authentication (declare both a token storage key and a
 // header builder); the options page renders one token field per such forge.
 export function authForges() {
     return staticForges.filter(f => f.tokenStorageKey && f.authHeader)
+}
+
+//
+// Self-hosted forges
+//
+// A self-hosted forge runs the same software as one of the families above, so
+// it is simply another instanceOf() of that family — built at runtime from the
+// hostname the user configured rather than hardcoded. Only forges expressed as
+// a family can be self-hosted; a single-host adapter would need converting to a
+// family first.
+//
+// `type` (stored with the user's instance config) selects the family.
+const selfHostedFamilies = {
+    gitlab: gitlabFamily,
+    forgejo: forgejoFamily,
+}
+
+// software types selectable when adding a self-hosted instance, for the options
+// page dropdown: [{ type, label }, …]
+export function selfHostedTypes() {
+    return Object.entries(selfHostedFamilies).map(([type, family]) => ({
+        type,
+        label: family.label,
+    }))
+}
+
+// storage.local key holding the (optional) token for a self-hosted instance;
+// keyed by hostname so every instance keeps its own token
+export function selfHostedTokenKey(hostname) {
+    return `selfHostedToken:${hostname}`
+}
+
+// build a forge adapter for a configured instance ({ type, hostname }); the
+// same instanceOf() used for the public instances, tagged so the background can
+// tell it needs an optional host permission. Returns null for an unknown type.
+export function buildSelfHostedForge({ type, hostname }) {
+    const family = selfHostedFamilies[type]
+    if (!family) return null
+
+    const forge = instanceOf(family, {
+        hostname,
+        tokenStorageKey: selfHostedTokenKey(hostname),
+    })
+    return Object.assign(forge, { selfHosted: true, type })
+}
+
+// pick a forge adapter for a page hostname, considering both the built-in
+// static forges and the user's configured self-hosted instances (null if none
+// matches). Static forges win; self-hosted instances are matched by exact
+// hostname to avoid one instance shadowing another.
+export function forgeForHostname(hostname, instances = []) {
+    const staticForge = staticForges.find(f => f.hostnames.some(h => hostname.includes(h)))
+    if (staticForge) return staticForge
+
+    const instance = instances.find(i => i.hostname === hostname)
+    return instance ? buildSelfHostedForge(instance) : null
 }
