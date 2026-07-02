@@ -25,3 +25,5 @@ API rate limit and list pull requests from private repositories.
 - Bitbucket
 - Codeberg
 - GitLab
+- self-hosted GitLab (CE/EE) and Forgejo/Gitea instances (add them in the
+  extension's options)

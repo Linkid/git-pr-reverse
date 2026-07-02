@@ -46,5 +46,45 @@
   "optionsCleared": {
     "message": "Jeton effacé",
     "description": "Message affiché après l'effacement du jeton"
+  },
+  "optionsSelfHostedTitle": {
+    "message": "Forges auto-hébergées",
+    "description": "Titre de la section des forges auto-hébergées sur la page d'options"
+  },
+  "optionsSelfHostedHint": {
+    "message": "Ajoutez votre propre instance de forge auto-hébergée. L'ajout demande l'autorisation d'accéder à ce site.",
+    "description": "Aide expliquant la section des forges auto-hébergées"
+  },
+  "optionsAddInstance": {
+    "message": "Ajouter",
+    "description": "Libellé du bouton d'ajout d'une instance auto-hébergée"
+  },
+  "optionsHostnamePlaceholder": {
+    "message": "git.exemple.com",
+    "description": "Texte indicatif du champ de nom d'hôte de l'instance auto-hébergée"
+  },
+  "optionsRemove": {
+    "message": "Supprimer",
+    "description": "Libellé du bouton de suppression d'une instance auto-hébergée"
+  },
+  "optionsInvalidHostname": {
+    "message": "Saisissez un nom d'hôte valide",
+    "description": "Message affiché quand le nom d'hôte saisi est invalide"
+  },
+  "optionsInstanceExists": {
+    "message": "Cette instance est déjà configurée",
+    "description": "Message affiché lors de l'ajout d'une instance déjà présente"
+  },
+  "optionsInstanceAdded": {
+    "message": "Instance ajoutée",
+    "description": "Message affiché après l'ajout d'une instance auto-hébergée"
+  },
+  "optionsInstanceRemoved": {
+    "message": "Instance supprimée",
+    "description": "Message affiché après la suppression d'une instance auto-hébergée"
+  },
+  "optionsPermissionDenied": {
+    "message": "L'autorisation d'accéder à cette instance a été refusée",
+    "description": "Message affiché quand la demande d'autorisation d'hôte est refusée"
   }
 }

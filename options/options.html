@@ -15,6 +15,24 @@
         <!-- one token field per authenticated forge, rendered by options.js -->
         <div id="forges"></div>
 
+        <!-- self-hosted forge instances -->
+        <section class="options__self-hosted">
+          <h4 class="options__subtitle" i18n=1>__MSG_optionsSelfHostedTitle__</h4>
+          <p class="options__hint" i18n=1>__MSG_optionsSelfHostedHint__</p>
+
+          <!-- one fieldset per configured instance, rendered by options.js -->
+          <div id="instances"></div>
+
+          <div class="options__add">
+            <select id="instance-type" class="options__input"></select>
+            <input id="instance-hostname" class="options__input" type="text"
+                   autocomplete="off" spellcheck="false">
+            <button type="button" id="add-instance" class="options__add-btn"
+                    i18n=1>__MSG_optionsAddInstance__</button>
+          </div>
+          <p id="instance-status" class="options__status" role="status"></p>
+        </section>
+
         <div class="options__actions">
           <button type="submit" class="options__save" i18n=1>__MSG_optionsSave__</button>
           <button type="button" id="clear" class="options__clear" i18n=1>__MSG_optionsClear__</button>

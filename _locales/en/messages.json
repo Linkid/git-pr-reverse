@@ -46,5 +46,45 @@
   "optionsCleared": {
     "message": "Token cleared",
     "description": "Status message shown after clearing the token"
+  },
+  "optionsSelfHostedTitle": {
+    "message": "Self-hosted forges",
+    "description": "Title of the self-hosted forges section on the options page"
+  },
+  "optionsSelfHostedHint": {
+    "message": "Add your own self-hosted forge instance. Adding one asks for permission to access that site.",
+    "description": "Hint explaining the self-hosted forges section"
+  },
+  "optionsAddInstance": {
+    "message": "Add",
+    "description": "Label of the button that adds a self-hosted instance"
+  },
+  "optionsHostnamePlaceholder": {
+    "message": "git.example.com",
+    "description": "Placeholder for the self-hosted instance hostname input"
+  },
+  "optionsRemove": {
+    "message": "Remove",
+    "description": "Label of the button that removes a self-hosted instance"
+  },
+  "optionsInvalidHostname": {
+    "message": "Enter a valid hostname",
+    "description": "Status message when the entered instance hostname is invalid"
+  },
+  "optionsInstanceExists": {
+    "message": "This instance is already configured",
+    "description": "Status message when adding an instance that already exists"
+  },
+  "optionsInstanceAdded": {
+    "message": "Instance added",
+    "description": "Status message shown after adding a self-hosted instance"
+  },
+  "optionsInstanceRemoved": {
+    "message": "Instance removed",
+    "description": "Status message shown after removing a self-hosted instance"
+  },
+  "optionsPermissionDenied": {
+    "message": "Permission to access this instance was denied",
+    "description": "Status message when the host permission request is denied"
   }
 }
