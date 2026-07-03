@@ -1,28 +1,10 @@
 import { browser } from "../browser.js"
 import { authForges, selfHostedTypes, selfHostedTokenKey } from "../forges.js"
+import { localize } from "../i18n.js"
 
 //
 // Functions
 //
-function localize() {
-    // Localize by replacing __MSG_***__ meta tags
-    const toLocalize = document.querySelectorAll("[i18n]")
-    for (let i = 0; i < toLocalize.length; i++) {
-        const obj = toLocalize[i]
-        const text = obj.textContent
-        const textLocalized = text.replace(
-            /__MSG_(\w+)__/g,
-            function(match, v1) {
-                return v1 ? browser.i18n.getMessage(v1) : ""
-            }
-        )
-
-        if (textLocalized != text) {
-            obj.textContent = textLocalized
-        }
-    }
-}
-
 function showStatus(messageKey, elementId = "status") {
     document.getElementById(elementId).textContent = browser.i18n.getMessage(messageKey)
 }

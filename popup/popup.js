@@ -1,5 +1,6 @@
 import { browser } from "../browser.js"
 import { forgeForHostname } from "../forges.js"
+import { localize } from "../i18n.js"
 
 //
 // Functions
@@ -56,25 +57,6 @@ export function renderError(urlInfo) {
     const ul = document.getElementById("prs")
     document.body.replaceChild(div, ul)
 
-}
-
-function localize() {
-    //Localize by replacing __MSG_***__ meta tags
-    var toLocalize = document.querySelectorAll("[i18n]")
-    for (var i=0; i < toLocalize.length; i++) {
-        var obj = toLocalize[i]
-        var text = obj.textContent
-        var textLocalized = text.replace(
-            /__MSG_(\w+)__/g,
-            function(match, v1) {
-                return v1 ? browser.i18n.getMessage(v1) : ""
-            }
-        )
-
-        if(textLocalized != text) {
-            obj.textContent = textLocalized
-        }
-    }
 }
 
 //

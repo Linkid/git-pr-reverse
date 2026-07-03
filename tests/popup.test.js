@@ -8,6 +8,13 @@ import assert from "node:assert/strict"
 // captured at load time (browser.js resolves it from globalThis). Both must be
 // in place *before* importing popup.js, so this file installs them on
 // globalThis and then dynamically imports the module under test.
+//
+// Contract: the mocks MUST be installed before the dynamic import() below —
+// keep it dynamic, do not turn it into a static import (those are hoisted and
+// would run before the mocks are set). The mocks are left on globalThis without
+// teardown; that is safe because `node --test` runs each test file in its own
+// process, so they cannot leak into other test files. Both assumptions break
+// under an in-process runner (e.g. --test-isolation=none).
 
 // a tiny stand-in for a DOM node: enough of the Element/DocumentFragment API
 // for render()/renderError() (setAttribute, textContent, appendChild,
