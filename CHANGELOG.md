@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.1 (2026-07-03)
+
+- fix(popup): declare all variables
+- refactor: factorize duplicated functions (i18n, storage, token)
+
 ## v1.3.0 (2026-07-03)
 
 - build(artifact): do not include tests and node stuff with web-ext
