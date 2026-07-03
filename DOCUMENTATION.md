@@ -60,6 +60,7 @@ On open, the popup:
 ├── background.js          # service worker: fetch PRs, match file, set badge
 ├── browser.js             # cross-browser WebExtension API shim (browser/chrome)
 ├── i18n.js                # shared localize() for the popup and options pages
+├── storage.js             # shared storage.local helpers (self-hosted instances)
 ├── forges.js              # per-forge API endpoint config
 ├── popup/
 │   ├── popup.html         # popup markup

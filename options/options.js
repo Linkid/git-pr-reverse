@@ -1,6 +1,7 @@
 import { browser } from "../browser.js"
 import { authForges, selfHostedTypes, selfHostedTokenKey } from "../forges.js"
 import { localize } from "../i18n.js"
+import { loadInstances, saveInstances } from "../storage.js"
 
 //
 // Functions
@@ -138,8 +139,7 @@ async function renderInstances() {
     const container = document.getElementById("instances")
     container.replaceChildren()
 
-    const stored = await browser.storage.local.get("selfHostedInstances")
-    const instances = stored.selfHostedInstances || []
+    const instances = await loadInstances()
     const typeLabels = Object.fromEntries(selfHostedTypes().map(t => [t.type, t.label]))
 
     for (const instance of instances) {
@@ -189,8 +189,7 @@ async function addInstance() {
     }
 
     try {
-        const stored = await browser.storage.local.get("selfHostedInstances")
-        const instances = stored.selfHostedInstances || []
+        const instances = await loadInstances()
 
         if (instances.some(i => i.hostname === hostname)) {
             showStatus("optionsInstanceExists", "instance-status")
@@ -206,7 +205,7 @@ async function addInstance() {
         }
 
         instances.push({ type, hostname })
-        await browser.storage.local.set({ selfHostedInstances: instances })
+        await saveInstances(instances)
         document.getElementById("instance-hostname").value = ""
         await renderInstances()
         await loadTokens()
@@ -220,10 +219,9 @@ async function addInstance() {
 // give back the host permission we no longer need
 async function removeInstance(hostname) {
     try {
-        const stored = await browser.storage.local.get("selfHostedInstances")
-        const instances = (stored.selfHostedInstances || []).filter(i => i.hostname !== hostname)
+        const instances = (await loadInstances()).filter(i => i.hostname !== hostname)
 
-        await browser.storage.local.set({ selfHostedInstances: instances })
+        await saveInstances(instances)
         await browser.storage.local.remove(selfHostedTokenKey(hostname))
         await browser.permissions.remove({ origins: [`*://${hostname}/*`] })
 
