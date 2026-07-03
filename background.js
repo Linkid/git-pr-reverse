@@ -1,5 +1,6 @@
 import { browser } from './browser.js'
 import { forgeForHostname } from './forges.js'
+import { loadInstances } from './storage.js'
 
 //
 // Main
@@ -161,13 +162,6 @@ function render(prs, tabId) {
     // save results
     // keys: "tabId", "prs"
     browser.storage.local.set({ tabId, prs })
-}
-
-// load the user's configured self-hosted instances from storage
-// returns an array of { type, hostname } (empty when none configured)
-async function loadInstances() {
-    const stored = await browser.storage.local.get("selfHostedInstances")
-    return stored.selfHostedInstances || []
 }
 
 async function main(tab) {

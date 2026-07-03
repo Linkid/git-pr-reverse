@@ -1,6 +1,7 @@
 import { browser } from "../browser.js"
 import { forgeForHostname } from "../forges.js"
 import { localize } from "../i18n.js"
+import { loadInstances } from "../storage.js"
 
 //
 // Functions
@@ -11,8 +12,7 @@ async function getUrlInfo(tab) {
 
     // pick the forge adapter (built-in or a configured self-hosted instance)
     // and parse the URL through it (null on a non-forge / non-file page)
-    const stored = await browser.storage.local.get("selfHostedInstances")
-    const forge = forgeForHostname(url.hostname, stored.selfHostedInstances || [])
+    const forge = forgeForHostname(url.hostname, await loadInstances())
     if (!forge) return null
     const info = forge.parseUrl(url)
     if (!info) return null
