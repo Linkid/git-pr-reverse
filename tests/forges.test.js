@@ -343,6 +343,7 @@ test("selfHostedTypes lists the supported software with labels", () => {
     assert.deepEqual(selfHostedTypes(), [
         { type: "gitlab", label: "GitLab" },
         { type: "forgejo", label: "Forgejo / Gitea" },
+        { type: "bitbucket-server", label: "Bitbucket Server / Data Center" },
     ])
 })
 
@@ -381,6 +382,69 @@ test("buildSelfHostedForge builds a Forgejo instance adapter reusing the codeber
         forge.filesUrl(info, { number: 42 }),
         "https://git.example.com/api/v1/repos/acme/widget/pulls/42/files")
     assert.deepEqual(forge.authHeader("cb_secret"), { Authorization: "token cb_secret" })
+})
+
+test("buildSelfHostedForge builds a Bitbucket Server instance adapter", () => {
+    const forge = buildSelfHostedForge({ type: "bitbucket-server", hostname: "bitbucket.example.com" })
+
+    assert.equal(forge.base_url, "https://bitbucket.example.com/rest/api/latest")
+    assert.equal(forge.selfHosted, true)
+
+    const info = { projectKey: "PRJ", repoSlug: "widget", origin: "https://bitbucket.example.com" }
+    assert.equal(
+        forge.listPRsUrl(info),
+        "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests?state=OPEN")
+    assert.equal(
+        forge.filesUrl(info, { id: 7 }),
+        "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests/7/changes")
+    assert.equal(
+        forge.prWebUrl(info, 7),
+        "https://bitbucket.example.com/projects/PRJ/repos/widget/pull-requests/7")
+    assert.equal(forge.prNumber({ id: 7 }), 7)
+    assert.deepEqual(forge.authHeader("bbs_secret"), { Authorization: "Bearer bbs_secret" })
+})
+
+test("bitbucket-server parseUrl extracts project, repo and filepath from a browse URL", () => {
+    const forge = buildSelfHostedForge({ type: "bitbucket-server", hostname: "bitbucket.example.com" })
+    const url = new URL("https://bitbucket.example.com/projects/PRJ/repos/widget/browse/src/app.js?at=refs%2Fheads%2Fmain")
+    assert.deepEqual(forge.parseUrl(url), {
+        projectKey: "PRJ",
+        repoSlug: "widget",
+        filepath: "src/app.js",
+        origin: "https://bitbucket.example.com",
+    })
+})
+
+test("bitbucket-server parseUrl maps a personal repo browse URL to the ~userSlug project", () => {
+    const forge = buildSelfHostedForge({ type: "bitbucket-server", hostname: "bitbucket.example.com" })
+    const url = new URL("https://bitbucket.example.com/users/jdoe/repos/widget/browse/dir/app.js?at=refs%2Fheads%2Fmain")
+    assert.deepEqual(forge.parseUrl(url), {
+        projectKey: "~jdoe",
+        repoSlug: "widget",
+        filepath: "dir/app.js",
+        origin: "https://bitbucket.example.com",
+    })
+})
+
+test("bitbucket-server addresses a personal repo as ~userSlug in the API but /users on the web", () => {
+    const forge = buildSelfHostedForge({ type: "bitbucket-server", hostname: "bitbucket.example.com" })
+    const info = { projectKey: "~jdoe", repoSlug: "widget", origin: "https://bitbucket.example.com" }
+    assert.equal(
+        forge.listPRsUrl(info),
+        "https://bitbucket.example.com/rest/api/latest/projects/~jdoe/repos/widget/pull-requests?state=OPEN")
+    assert.equal(
+        forge.prWebUrl(info, 7),
+        "https://bitbucket.example.com/users/jdoe/repos/widget/pull-requests/7")
+})
+
+test("bitbucket-server pullRequests and filenames unwrap the paginated envelopes", () => {
+    const forge = buildSelfHostedForge({ type: "bitbucket-server", hostname: "bitbucket.example.com" })
+    assert.deepEqual(forge.pullRequests({ values: [{ id: 1 }, { id: 2 }] }), [{ id: 1 }, { id: 2 }])
+    const changes = { values: [
+        { path: { toString: "a.js" } },
+        { path: { toString: "dir/b.js" } },
+    ] }
+    assert.deepEqual(forge.filenames(changes), ["a.js", "dir/b.js"])
 })
 
 test("the public instance and a self-hosted instance share one family", () => {

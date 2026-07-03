@@ -277,6 +277,67 @@ export const gitlab = instanceOf(gitlabFamily, {
     tokenStorageKey: "gitlabToken",
 })
 
+// Bitbucket Data Center / Server family: self-hosted only — Bitbucket Cloud
+// (the `bitbucket` adapter above) is a separate product with a different API.
+// Serves its REST API under /rest/api/latest and paginates in a `values` array.
+// API docs: https://developer.atlassian.com/server/bitbucket/rest/latest/
+const bitbucketServerFamily = {
+    label: "Bitbucket Server / Data Center",
+    apiPath: "/rest/api/latest",
+
+    parseUrl(url) {
+        // file view, project repo:  /projects/{projectKey}/repos/{repoSlug}/browse/{filepath}
+        // file view, personal repo: /users/{userSlug}/repos/{repoSlug}/browse/{filepath}
+        // (the branch/tag ref lives in the ?at= query, so filepath stays clean)
+        const m = url.pathname.match(
+            "^/(?<section>projects|users)/(?<owner>[^/]+)/repos/(?<repoSlug>[^/]+)/browse/(?<filepath>.+)$")
+        if (!m) return null
+        const { section, owner, repoSlug, filepath } = m.groups
+        // the API addresses a personal repo as the ~{userSlug} project
+        const projectKey = section === "users" ? `~${owner}` : owner
+        return { projectKey, repoSlug, filepath, origin: url.origin }
+    },
+
+    listPRsUrl(info) {
+        // the pull-requests endpoint defaults to OPEN, but be explicit
+        return `${this.base_url}/projects/${info.projectKey}/repos/${info.repoSlug}/pull-requests?state=OPEN`
+    },
+
+    // the list endpoint wraps the PRs in a paginated envelope
+    pullRequests(data) {
+        return data.values
+    },
+
+    filesUrl(info, pr) {
+        return `${this.base_url}/projects/${info.projectKey}/repos/${info.repoSlug}/pull-requests/${this.prNumber(pr)}/changes`
+    },
+
+    // each change carries the file path as `path.toString`
+    filenames(changes) {
+        return changes.values.map(change => change.path.toString)
+    },
+
+    prNumber(pr) {
+        return pr.id
+    },
+
+    prWebUrl(info, prNumber) {
+        // a personal repo (project key ~{userSlug}) lives under /users/{userSlug}
+        const repoPath = info.projectKey.startsWith("~")
+            ? `users/${info.projectKey.slice(1)}/repos/${info.repoSlug}`
+            : `projects/${info.projectKey}/repos/${info.repoSlug}`
+        return `${info.origin}/${repoPath}/pull-requests/${prNumber}`
+    },
+
+    // Bitbucket Server exposes no simple rate-limit endpoint.
+    rateLimit: null,
+
+    // Bitbucket Server accepts an HTTP access token as a Bearer credential.
+    authHeader(token) {
+        return { Authorization: `Bearer ${token}` }
+    },
+}
+
 // registry of forges matched by a static hostname
 const staticForges = [github, bitbucket, codeberg, gitlab]
 
@@ -299,6 +360,7 @@ export function authForges() {
 const selfHostedFamilies = {
     gitlab: gitlabFamily,
     forgejo: forgejoFamily,
+    "bitbucket-server": bitbucketServerFamily,
 }
 
 // software types selectable when adding a self-hosted instance, for the options

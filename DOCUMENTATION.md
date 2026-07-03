@@ -183,6 +183,8 @@ skips an instance until its permission is granted.
 Supported self-hosted software:
 - **GitLab** (CE/EE): https://docs.gitlab.com/ee/api/merge_requests.html
 - **Forgejo / Gitea**: https://forgejo.org/docs/latest/user/api-usage/
+- **Bitbucket Server / Data Center**: https://developer.atlassian.com/server/bitbucket/rest/latest/
+  (self-hosted only — a different API from Bitbucket Cloud)
 
 To support new self-hosted software, define its family and add it to
 `selfHostedFamilies`.
