@@ -10,41 +10,55 @@ function showStatus(messageKey, elementId = "status") {
     document.getElementById(elementId).textContent = browser.i18n.getMessage(messageKey)
 }
 
+// build a token-input fieldset shared by the static forges and the self-hosted
+// instances: a legend, a "token" label, an optional hint and a password input
+// whose data-storage-key ties it to the forge-agnostic load/save/clear. Returns
+// the fieldset so callers can append extras (e.g. a remove button).
+function tokenFieldset({ legendText, storageKey, hintKey }) {
+    const fieldset = document.createElement("fieldset")
+    fieldset.className = "options__forge"
+
+    const legend = document.createElement("legend")
+    legend.textContent = legendText
+    fieldset.appendChild(legend)
+
+    const label = document.createElement("label")
+    label.className = "options__label"
+    label.setAttribute("for", storageKey)
+    label.textContent = browser.i18n.getMessage("optionsTokenLabel")
+    fieldset.appendChild(label)
+
+    if (hintKey) {
+        const hint = document.createElement("p")
+        hint.className = "options__hint"
+        hint.textContent = browser.i18n.getMessage(hintKey)
+        fieldset.appendChild(hint)
+    }
+
+    const input = document.createElement("input")
+    input.type = "password"
+    input.id = storageKey
+    input.className = "options__input"
+    input.autocomplete = "off"
+    input.spellcheck = false
+    input.dataset.storageKey = storageKey
+    fieldset.appendChild(input)
+
+    return fieldset
+}
+
 // render one token field per authenticated forge; each input is tagged with the
 // forge's storage key so load/save/clear can stay forge-agnostic
 function renderForges() {
     const container = document.getElementById("forges")
 
     for (const forge of authForges()) {
-        const fieldset = document.createElement("fieldset")
-        fieldset.className = "options__forge"
-
-        // forge name (a proper noun, not localized)
-        const legend = document.createElement("legend")
-        legend.textContent = forge.label
-        fieldset.appendChild(legend)
-
-        const label = document.createElement("label")
-        label.className = "options__label"
-        label.setAttribute("for", forge.tokenStorageKey)
-        label.textContent = browser.i18n.getMessage("optionsTokenLabel")
-        fieldset.appendChild(label)
-
-        const hint = document.createElement("p")
-        hint.className = "options__hint"
-        hint.textContent = browser.i18n.getMessage("optionsTokenHint")
-        fieldset.appendChild(hint)
-
-        const input = document.createElement("input")
-        input.type = "password"
-        input.id = forge.tokenStorageKey
-        input.className = "options__input"
-        input.autocomplete = "off"
-        input.spellcheck = false
-        input.dataset.storageKey = forge.tokenStorageKey
-        fieldset.appendChild(input)
-
-        container.appendChild(fieldset)
+        // forge name is a proper noun, not localized
+        container.appendChild(tokenFieldset({
+            legendText: forge.label,
+            storageKey: forge.tokenStorageKey,
+            hintKey: "optionsTokenHint",
+        }))
     }
 }
 
@@ -143,29 +157,10 @@ async function renderInstances() {
     const typeLabels = Object.fromEntries(selfHostedTypes().map(t => [t.type, t.label]))
 
     for (const instance of instances) {
-        const fieldset = document.createElement("fieldset")
-        fieldset.className = "options__forge"
-
-        const legend = document.createElement("legend")
-        legend.textContent = `${instance.hostname} — ${typeLabels[instance.type] || instance.type}`
-        fieldset.appendChild(legend)
-
-        const key = selfHostedTokenKey(instance.hostname)
-
-        const label = document.createElement("label")
-        label.className = "options__label"
-        label.setAttribute("for", key)
-        label.textContent = browser.i18n.getMessage("optionsTokenLabel")
-        fieldset.appendChild(label)
-
-        const input = document.createElement("input")
-        input.type = "password"
-        input.id = key
-        input.className = "options__input"
-        input.autocomplete = "off"
-        input.spellcheck = false
-        input.dataset.storageKey = key
-        fieldset.appendChild(input)
+        const fieldset = tokenFieldset({
+            legendText: `${instance.hostname} — ${typeLabels[instance.type] || instance.type}`,
+            storageKey: selfHostedTokenKey(instance.hostname),
+        })
 
         const remove = document.createElement("button")
         remove.type = "button"
