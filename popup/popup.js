@@ -19,24 +19,24 @@ async function getUrlInfo(tab) {
     return { forge, ...info }
 }
 
-function render(prs, urlInfo) {
+export function render(prs, urlInfo) {
     // get the ul element and clear the loading state
-    ul = document.getElementById("prs")
+    const ul = document.getElementById("prs")
     ul.replaceChildren()
 
     // empty state: no open pull request modifies the file
     if (prs.length == 0) {
-        li = document.createElement("li")
+        const li = document.createElement("li")
         li.setAttribute("class", "pr-list__empty")
         li.textContent = browser.i18n.getMessage("popupEmptyList")
         ul.appendChild(li)
        return
     }
 
-    fragment = document.createDocumentFragment()
+    const fragment = document.createDocumentFragment()
     for (let pr of prs) {
-        li = document.createElement("li")
-        a = document.createElement("a")
+        const li = document.createElement("li")
+        const a = document.createElement("a")
         a.setAttribute("href", urlInfo.forge.prWebUrl(urlInfo, pr))
         a.setAttribute("target", "_blank")
         a.textContent = "#" + pr
@@ -46,14 +46,14 @@ function render(prs, urlInfo) {
     ul.appendChild(fragment)
 }
 
-function renderError(urlInfo) {
+export function renderError(urlInfo) {
     // create a div element
-    div = document.createElement("div")
+    const div = document.createElement("div")
     div.setAttribute("id", "error")
     div.textContent = browser.i18n.getMessage("popupErrorMessage")
 
     // replace the ul element with the div element
-    ul = document.getElementById("prs")
+    const ul = document.getElementById("prs")
     document.body.replaceChild(div, ul)
 
 }
@@ -80,7 +80,6 @@ function localize() {
 //
 // Main
 //
-localize()
 async function init() {
     // get the active tab
     const tabs = await browser.tabs.query({active: true, currentWindow: true})
@@ -102,4 +101,10 @@ async function init() {
         renderError(urlInfo)
     }
 }
-init().catch(error => console.error(`Error: ${error}`))
+// register the popup logic against the browser; skipped when this module is
+// imported outside a WebExtension context (e.g. the test runner, where the
+// browser shim resolves to undefined)
+if (browser) {
+    localize()
+    init().catch(error => console.error(`Error: ${error}`))
+}
