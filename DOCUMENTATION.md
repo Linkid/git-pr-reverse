@@ -59,6 +59,7 @@ On open, the popup:
 ├── manifest.json          # MV3 manifest
 ├── background.js          # service worker: fetch PRs, match file, set badge
 ├── browser.js             # cross-browser WebExtension API shim (browser/chrome)
+├── i18n.js                # shared localize() for the popup and options pages
 ├── forges.js              # per-forge API endpoint config
 ├── popup/
 │   ├── popup.html         # popup markup
@@ -196,7 +197,8 @@ Translations live in `_locales/<lang>/messages.json`. The default locale is
 language if it exists.
 
 Strings are resolved two ways:
-- `__MSG_<key>__` placeholders
+- `__MSG_<key>__` placeholders in page markup, swapped in at load time by the
+  shared `localize()` in `i18n.js` (used by both the popup and options pages)
 - `browser.i18n.getMessage("<key>")` (in `popup.js` and `options.js`).
 
 To add a locale:
