@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3.0 (2026-07-03)
+
+- build(artifact): do not include tests and node stuff with web-ext
+- feat(forges): support Codeberg
+- feat(forges): support the GitLab public instance
+- feat(forges): support self-hosted forges (GitLab CE/EE, Forgejo/Gitea, Bitbucket Server/Data Center)
+- fix(background): replace globals with helpers params
+- refactor: use async/await instead of `then()`
+
 ## v1.2.0 (2026-06-30)
 
 - ci(build): build and upload the Chrome artifact
