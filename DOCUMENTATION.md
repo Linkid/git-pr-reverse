@@ -64,7 +64,7 @@ On open, the popup:
 ├── forges.js              # per-forge API endpoint config
 ├── popup/
 │   ├── popup.html         # popup markup
-│   ├── options.css        # popup page styles
+│   ├── popup.css          # popup page styles
 │   └── popup.js           # popup logic (read storage, render)
 ├── options/
 │   ├── options.html       # options page markup
