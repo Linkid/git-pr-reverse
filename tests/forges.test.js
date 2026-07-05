@@ -75,14 +75,14 @@ test("github.listPRsUrl builds the pulls endpoint", () => {
     const info = { projectKey: "Linkid", repoSlug: "git-pr-reverse" }
     assert.equal(
         github.listPRsUrl(info),
-        "https://api.github.com/repos/Linkid/git-pr-reverse/pulls")
+        "https://api.github.com/repos/Linkid/git-pr-reverse/pulls?per_page=100")
 })
 
 test("github.filesUrl builds the files endpoint for a PR", () => {
     const info = { projectKey: "Linkid", repoSlug: "git-pr-reverse" }
     assert.equal(
         github.filesUrl(info, { number: 42 }),
-        "https://api.github.com/repos/Linkid/git-pr-reverse/pulls/42/files")
+        "https://api.github.com/repos/Linkid/git-pr-reverse/pulls/42/files?per_page=100")
 })
 
 test("github.prWebUrl builds the web URL of a PR", () => {
@@ -160,7 +160,7 @@ test("bitbucket.listPRsUrl builds the pullrequests endpoint", () => {
     const info = { projectKey: "acme", repoSlug: "widget" }
     assert.equal(
         bitbucket.listPRsUrl(info),
-        "https://api.bitbucket.org/2.0/repositories/acme/widget/pullrequests")
+        "https://api.bitbucket.org/2.0/repositories/acme/widget/pullrequests?pagelen=50")
 })
 
 test("bitbucket.filesUrl builds the diffstat endpoint for a PR", () => {
@@ -235,14 +235,14 @@ test("codeberg.listPRsUrl builds the pulls endpoint", () => {
     const info = { projectKey: "acme", repoSlug: "widget" }
     assert.equal(
         codeberg.listPRsUrl(info),
-        "https://codeberg.org/api/v1/repos/acme/widget/pulls")
+        "https://codeberg.org/api/v1/repos/acme/widget/pulls?limit=50")
 })
 
 test("codeberg.filesUrl builds the files endpoint for a PR", () => {
     const info = { projectKey: "acme", repoSlug: "widget" }
     assert.equal(
         codeberg.filesUrl(info, { number: 42 }),
-        "https://codeberg.org/api/v1/repos/acme/widget/pulls/42/files")
+        "https://codeberg.org/api/v1/repos/acme/widget/pulls/42/files?limit=50")
 })
 
 test("codeberg.prWebUrl builds the web URL of a PR", () => {
@@ -303,14 +303,14 @@ test("gitlab.listPRsUrl builds the merge_requests endpoint with the encoded path
     const info = { projectPath: "group/subgroup/widget" }
     assert.equal(
         gitlab.listPRsUrl(info),
-        "https://gitlab.com/api/v4/projects/group%2Fsubgroup%2Fwidget/merge_requests?state=opened")
+        "https://gitlab.com/api/v4/projects/group%2Fsubgroup%2Fwidget/merge_requests?state=opened&per_page=100")
 })
 
 test("gitlab.filesUrl builds the diffs endpoint for a merge request", () => {
     const info = { projectPath: "acme/widget" }
     assert.equal(
         gitlab.filesUrl(info, { iid: 42 }),
-        "https://gitlab.com/api/v4/projects/acme%2Fwidget/merge_requests/42/diffs")
+        "https://gitlab.com/api/v4/projects/acme%2Fwidget/merge_requests/42/diffs?per_page=100")
 })
 
 test("gitlab.prWebUrl builds the web URL of a merge request", () => {
@@ -345,6 +345,46 @@ test("gitlab.authHeader builds a PRIVATE-TOKEN header", () => {
 })
 
 //
+// pagination
+//
+test("github.nextPageUrl follows the Link header rel=next", () => {
+    const link = '<https://api.github.com/repos/a/b/pulls?page=2>; rel="next", ' +
+        '<https://api.github.com/repos/a/b/pulls?page=5>; rel="last"'
+    const response = { headers: { get: () => link } }
+    assert.equal(github.nextPageUrl(response, []), "https://api.github.com/repos/a/b/pulls?page=2")
+})
+
+test("github.nextPageUrl returns null on the last page", () => {
+    // no Link header at all
+    assert.equal(github.nextPageUrl({ headers: { get: () => null } }, []), null)
+    // a Link header without a rel="next" entry
+    const link = '<https://api.github.com/repos/a/b/pulls?page=1>; rel="first"'
+    assert.equal(github.nextPageUrl({ headers: { get: () => link } }, []), null)
+})
+
+test("gitlab and codeberg paginate through the Link header too", () => {
+    const response = { headers: { get: () => '<https://example.com/api?page=2>; rel="next"' } }
+    assert.equal(gitlab.nextPageUrl(response, []), "https://example.com/api?page=2")
+    assert.equal(codeberg.nextPageUrl(response, []), "https://example.com/api?page=2")
+})
+
+test("bitbucket.nextPageUrl reads the next URL off the envelope", () => {
+    const next = "https://api.bitbucket.org/2.0/repositories/acme/widget/pullrequests?page=2"
+    assert.equal(bitbucket.nextPageUrl({}, { values: [], next }), next)
+    // the last page carries no `next` field
+    assert.equal(bitbucket.nextPageUrl({}, { values: [] }), null)
+})
+
+test("bitbucket-server nextPageUrl re-requests the same URL at nextPageStart", () => {
+    const forge = buildSelfHostedForge({ type: "bitbucket-server", hostname: "bitbucket.example.com" })
+    const response = { url: "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests?state=OPEN&limit=100" }
+    assert.equal(
+        forge.nextPageUrl(response, { isLastPage: false, nextPageStart: 100 }),
+        "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests?state=OPEN&limit=100&start=100")
+    assert.equal(forge.nextPageUrl(response, { isLastPage: true }), null)
+})
+
+//
 // self-hosted forges
 //
 test("selfHostedTypes lists the supported software with labels", () => {
@@ -376,7 +416,7 @@ test("buildSelfHostedForge builds a GitLab instance adapter reusing the gitlab l
     const info = { projectPath: "group/widget", origin: "https://gitlab.example.com" }
     assert.equal(
         forge.listPRsUrl(info),
-        "https://gitlab.example.com/api/v4/projects/group%2Fwidget/merge_requests?state=opened")
+        "https://gitlab.example.com/api/v4/projects/group%2Fwidget/merge_requests?state=opened&per_page=100")
     assert.equal(forge.prNumber({ iid: 7 }), 7)
     assert.deepEqual(forge.authHeader("gl_secret"), { "PRIVATE-TOKEN": "gl_secret" })
 })
@@ -388,7 +428,7 @@ test("buildSelfHostedForge builds a Forgejo instance adapter reusing the codeber
     const info = { projectKey: "acme", repoSlug: "widget" }
     assert.equal(
         forge.filesUrl(info, { number: 42 }),
-        "https://git.example.com/api/v1/repos/acme/widget/pulls/42/files")
+        "https://git.example.com/api/v1/repos/acme/widget/pulls/42/files?limit=50")
     assert.deepEqual(forge.authHeader("cb_secret"), { Authorization: "token cb_secret" })
 })
 
@@ -401,10 +441,10 @@ test("buildSelfHostedForge builds a Bitbucket Server instance adapter", () => {
     const info = { projectKey: "PRJ", repoSlug: "widget", origin: "https://bitbucket.example.com" }
     assert.equal(
         forge.listPRsUrl(info),
-        "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests?state=OPEN")
+        "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests?state=OPEN&limit=100")
     assert.equal(
         forge.filesUrl(info, { id: 7 }),
-        "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests/7/changes")
+        "https://bitbucket.example.com/rest/api/latest/projects/PRJ/repos/widget/pull-requests/7/changes?limit=100")
     assert.equal(
         forge.prWebUrl(info, 7),
         "https://bitbucket.example.com/projects/PRJ/repos/widget/pull-requests/7")
@@ -439,7 +479,7 @@ test("bitbucket-server addresses a personal repo as ~userSlug in the API but /us
     const info = { projectKey: "~jdoe", repoSlug: "widget", origin: "https://bitbucket.example.com" }
     assert.equal(
         forge.listPRsUrl(info),
-        "https://bitbucket.example.com/rest/api/latest/projects/~jdoe/repos/widget/pull-requests?state=OPEN")
+        "https://bitbucket.example.com/rest/api/latest/projects/~jdoe/repos/widget/pull-requests?state=OPEN&limit=100")
     assert.equal(
         forge.prWebUrl(info, 7),
         "https://bitbucket.example.com/users/jdoe/repos/widget/pull-requests/7")

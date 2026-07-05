@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { addIfIncluded, getFilenames, authHeadersFor, getFilesPRs } from "../background.js"
+import { addIfIncluded, authHeadersFor, getFilesPRs, fetchAllPages } from "../background.js"
 import { github } from "../forges.js"
 
 //
@@ -26,18 +26,6 @@ test("addIfIncluded preserves a falsy key when the item is present", () => {
 })
 
 //
-// getFilenames (delegates to the forge adapter)
-//
-test("getFilenames delegates to the forge adapter", () => {
-    const files = [{ filename: "a.js" }, { filename: "dir/b.js" }]
-    assert.deepEqual(getFilenames(github, files), ["a.js", "dir/b.js"])
-})
-
-test("getFilenames returns an empty array for no files", () => {
-    assert.deepEqual(getFilenames(github, []), [])
-})
-
-//
 // authHeadersFor
 //
 test("authHeadersFor builds the auth header from a stored token", () => {
@@ -54,6 +42,70 @@ test("authHeadersFor returns no headers for a forge without authentication", () 
     // an adapter that declares no token key / header builder
     const forge = { hostnames: ["example.com"] }
     assert.deepEqual(authHeadersFor(forge, { githubToken: "ghp_secret" }), {})
+})
+
+//
+// fetchAllPages
+//
+test("fetchAllPages concatenates the pages following next links", async () => {
+    const realFetch = globalThis.fetch
+    const realRequest = globalThis.Request
+
+    // two pages chained by a next link, mapped by URL
+    const pages = {
+        "https://api.example.com/pulls": {
+            data: [{ number: 1 }, { number: 2 }],
+            next: "https://api.example.com/pulls?page=2",
+        },
+        "https://api.example.com/pulls?page=2": {
+            data: [{ number: 3 }],
+            next: null,
+        },
+    }
+    globalThis.Request = class { constructor(url) { this.url = url } }
+    globalThis.fetch = async request => ({
+        ok: true,
+        url: request.url,
+        headers: { get: () => null },
+        json: async () => pages[request.url].data,
+    })
+    // a minimal forge whose nextPageUrl walks the chain above
+    const forge = { nextPageUrl: (response) => pages[response.url].next }
+
+    try {
+        const { items, response } = await fetchAllPages(
+            forge, "https://api.example.com/pulls", {}, data => data, "unused")
+        assert.deepEqual(items, [{ number: 1 }, { number: 2 }, { number: 3 }])
+        // the last response is returned, for rate-limit header checks
+        assert.equal(response.url, "https://api.example.com/pulls?page=2")
+    } finally {
+        globalThis.fetch = realFetch
+        globalThis.Request = realRequest
+    }
+})
+
+test("fetchAllPages throws on a non-ok response", async () => {
+    const realFetch = globalThis.fetch
+    const realRequest = globalThis.Request
+
+    globalThis.Request = class { constructor(url) { this.url = url } }
+    globalThis.fetch = async () => ({
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+        headers: { get: () => null },
+        json: async () => ({ message: "rate limited" }),
+    })
+
+    try {
+        await assert.rejects(
+            fetchAllPages(github, "https://api.example.com/pulls", {}, data => data,
+                "Failed to list pull requests"),
+            /Failed to list pull requests: \[403\] Forbidden: rate limited/)
+    } finally {
+        globalThis.fetch = realFetch
+        globalThis.Request = realRequest
+    }
 })
 
 //
@@ -75,6 +127,7 @@ test("getFilesPRs uses its own arguments under interleaved concurrent calls", as
     globalThis.fetch = () => new Promise(resolve => {
         resolvers.push(() => resolve({
             ok: true,
+            headers: { get: () => null },  // single page: no Link header
             json: async () => [{ filename: "a.js" }, { filename: "b.js" }],
         }))
     })
