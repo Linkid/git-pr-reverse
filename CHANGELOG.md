@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3.2 (2026-07-05)
+
+- ci(test): run the tests with coverage
+- docs: fix the popup stylesheet name in the file layout
+- fix(forges): match forge hostnames exactly or by subdomain instead of by substring, so lookalike hosts no longer trigger API calls
+- fix(popup): display error instead of the loading state
+- fix(storage): store the popup results per tab in storage session
+- refactor(popup): drop the unused renderError parameter
+
 ## v1.3.1 (2026-07-03)
 
 - fix(popup): declare all variables
