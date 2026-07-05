@@ -146,7 +146,7 @@ async function checkRateLimitFromPRs(forge, response) {
 
     // compare number of pull requests with rate limit
     console.log("Number of pull requests:", list.length)
-    if (remaining !== null && remaining <= list.length) {
+    if (remaining !== null && Number(remaining) <= list.length) {
         throw new Error("Rate limit reached!")
     }
     return list
