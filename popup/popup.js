@@ -31,7 +31,7 @@ export function render(prs, urlInfo) {
         li.setAttribute("class", "pr-list__empty")
         li.textContent = browser.i18n.getMessage("popupEmptyList")
         ul.appendChild(li)
-       return
+        return
     }
 
     const fragment = document.createDocumentFragment()
@@ -47,7 +47,7 @@ export function render(prs, urlInfo) {
     ul.appendChild(fragment)
 }
 
-export function renderError(urlInfo) {
+export function renderError() {
     // create a div element
     const div = document.createElement("div")
     div.setAttribute("id", "error")
@@ -56,7 +56,6 @@ export function renderError(urlInfo) {
     // replace the ul element with the div element
     const ul = document.getElementById("prs")
     document.body.replaceChild(div, ul)
-
 }
 
 //
@@ -80,7 +79,7 @@ async function init() {
         render(result.prs, urlInfo)
     } else {
         // error in bg script
-        renderError(urlInfo)
+        renderError()
     }
 }
 // register the popup logic against the browser; skipped when this module is
