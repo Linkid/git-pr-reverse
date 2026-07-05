@@ -19,12 +19,28 @@
 //   filenames   (filesResponse) -> array of filenames touched by a PR
 //   prNumber    (pr) -> identifier of a PR (used in URLs and displayed)
 //   prWebUrl    (info, prNumber) -> web (non-API) URL of a PR, for popup links
+//   nextPageUrl (response, data) -> URL of the next page of a paginated API
+//               response, or null on the last page
 //   rateLimit   optional { url, header, remaining(data) }; null if the forge
 //               exposes no rate-limit endpoint
 //   tokenStorageKey  optional storage.local key holding the user's API token;
 //                    omit if the forge supports no authentication
 //   authHeader  optional (token) -> headers object sent with API requests when
 //               a token is configured; omit if the forge supports no auth
+
+// parse an RFC 8288 `Link` response header and return the rel="next" URL
+// (null when there is no next page). Shared by the forges that paginate
+// through this standard header (GitHub, GitLab, Forgejo/Gitea).
+function nextFromLinkHeader(response) {
+    const link = response.headers.get("link")
+    if (!link) return null
+
+    for (const part of link.split(",")) {
+        const m = part.match(/<([^>]+)>\s*;.*rel="?next"?/)
+        if (m) return m[1]
+    }
+    return null
+}
 
 // API docs: https://docs.github.com/en/rest/pulls
 export const github = {
@@ -40,7 +56,8 @@ export const github = {
     },
 
     listPRsUrl(info) {
-        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls`
+        // per_page raises the page size to the API maximum (default is 30)
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls?per_page=100`
     },
 
     // the list endpoint already returns a JSON array of PRs
@@ -49,7 +66,7 @@ export const github = {
     },
 
     filesUrl(info, pr) {
-        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls/${this.prNumber(pr)}/files`
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls/${this.prNumber(pr)}/files?per_page=100`
     },
 
     filenames(files) {
@@ -62,6 +79,11 @@ export const github = {
 
     prWebUrl(info, prNumber) {
         return `${info.origin}/${info.projectKey}/${info.repoSlug}/pull/${prNumber}`
+    },
+
+    // GitHub paginates through the standard Link response header
+    nextPageUrl(response) {
+        return nextFromLinkHeader(response)
     },
 
     rateLimit: {
@@ -97,7 +119,8 @@ export const bitbucket = {
     },
 
     listPRsUrl(info) {
-        return `${this.base_url}/repositories/${info.projectKey}/${info.repoSlug}/pullrequests`
+        // pagelen raises the page size to the API maximum (default is 10)
+        return `${this.base_url}/repositories/${info.projectKey}/${info.repoSlug}/pullrequests?pagelen=50`
     },
 
     // the list endpoint wraps the PRs in a paginated envelope
@@ -120,6 +143,12 @@ export const bitbucket = {
 
     prWebUrl(info, prNumber) {
         return `${info.origin}/${info.projectKey}/${info.repoSlug}/pull-requests/${prNumber}`
+    },
+
+    // Bitbucket Cloud paginates in the body: the envelope carries the full
+    // URL of the next page (absent on the last one)
+    nextPageUrl(response, data) {
+        return data.next ?? null
     },
 
     // Bitbucket Cloud exposes no simple rate-limit endpoint.
@@ -170,7 +199,8 @@ const forgejoFamily = {
     },
 
     listPRsUrl(info) {
-        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls`
+        // limit raises the page size to the default API maximum (50)
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls?limit=50`
     },
 
     // the list endpoint returns a JSON array of PRs
@@ -179,7 +209,7 @@ const forgejoFamily = {
     },
 
     filesUrl(info, pr) {
-        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls/${this.prNumber(pr)}/files`
+        return `${this.base_url}/repos/${info.projectKey}/${info.repoSlug}/pulls/${this.prNumber(pr)}/files?limit=50`
     },
 
     filenames(files) {
@@ -192,6 +222,11 @@ const forgejoFamily = {
 
     prWebUrl(info, prNumber) {
         return `${info.origin}/${info.projectKey}/${info.repoSlug}/pulls/${prNumber}`
+    },
+
+    // Forgejo/Gitea paginates through the standard Link response header
+    nextPageUrl(response) {
+        return nextFromLinkHeader(response)
     },
 
     // Forgejo/Gitea exposes no simple rate-limit endpoint.
@@ -234,8 +269,9 @@ const gitlabFamily = {
     },
 
     listPRsUrl(info) {
-        // /merge_requests defaults to every state, so filter to the open ones
-        return `${this.base_url}/projects/${this.projectId(info)}/merge_requests?state=opened`
+        // /merge_requests defaults to every state, so filter to the open ones;
+        // per_page raises the page size to the API maximum (default is 20)
+        return `${this.base_url}/projects/${this.projectId(info)}/merge_requests?state=opened&per_page=100`
     },
 
     // the list endpoint returns a JSON array of merge requests
@@ -244,7 +280,7 @@ const gitlabFamily = {
     },
 
     filesUrl(info, pr) {
-        return `${this.base_url}/projects/${this.projectId(info)}/merge_requests/${this.prNumber(pr)}/diffs`
+        return `${this.base_url}/projects/${this.projectId(info)}/merge_requests/${this.prNumber(pr)}/diffs?per_page=100`
     },
 
     // a diff entry keeps new_path == old_path for deletions, so new_path is safe
@@ -259,6 +295,11 @@ const gitlabFamily = {
 
     prWebUrl(info, prNumber) {
         return `${info.origin}/${info.projectPath}/-/merge_requests/${prNumber}`
+    },
+
+    // GitLab paginates through the standard Link response header
+    nextPageUrl(response) {
+        return nextFromLinkHeader(response)
     },
 
     // GitLab exposes rate-limit info only through response headers, not a
@@ -300,8 +341,9 @@ const bitbucketServerFamily = {
     },
 
     listPRsUrl(info) {
-        // the pull-requests endpoint defaults to OPEN, but be explicit
-        return `${this.base_url}/projects/${info.projectKey}/repos/${info.repoSlug}/pull-requests?state=OPEN`
+        // the pull-requests endpoint defaults to OPEN, but be explicit;
+        // limit raises the page size well above the default (25)
+        return `${this.base_url}/projects/${info.projectKey}/repos/${info.repoSlug}/pull-requests?state=OPEN&limit=100`
     },
 
     // the list endpoint wraps the PRs in a paginated envelope
@@ -310,7 +352,7 @@ const bitbucketServerFamily = {
     },
 
     filesUrl(info, pr) {
-        return `${this.base_url}/projects/${info.projectKey}/repos/${info.repoSlug}/pull-requests/${this.prNumber(pr)}/changes`
+        return `${this.base_url}/projects/${info.projectKey}/repos/${info.repoSlug}/pull-requests/${this.prNumber(pr)}/changes?limit=100`
     },
 
     // each change carries the file path as `path.toString`
@@ -328,6 +370,15 @@ const bitbucketServerFamily = {
             ? `users/${info.projectKey.slice(1)}/repos/${info.repoSlug}`
             : `projects/${info.projectKey}/repos/${info.repoSlug}`
         return `${info.origin}/${repoPath}/pull-requests/${prNumber}`
+    },
+
+    // Bitbucket Server paginates in the body: the envelope carries isLastPage
+    // and the start index of the next page, re-requested on the same URL
+    nextPageUrl(response, data) {
+        if (data.isLastPage || data.nextPageStart == null) return null
+        const url = new URL(response.url)
+        url.searchParams.set("start", data.nextPageStart)
+        return url.toString()
     },
 
     // Bitbucket Server exposes no simple rate-limit endpoint.

@@ -50,39 +50,45 @@ async function loadAuthHeaders(forge) {
     return authHeadersFor(forge, stored)
 }
 
-// fetch all pull requests
-// returns a promise with the list of pull requests
-async function listAllPRs(forge, urlInfo, requestHeaders) {
+// fetch every page of a paginated endpoint, following the forge's next-page
+// links; returns { items, response } where items concatenates normalize(data)
+// across the pages and response is the last HTTP response (for header checks)
+export async function fetchAllPages(forge, url, requestHeaders, normalize, errorLabel) {
+    const items = []
+    let response
+    while (url) {
+        response = await fetch(new Request(url, { headers: requestHeaders }))
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(`${errorLabel}: [${response.status}] ${response.statusText}: ${data.message ?? data}`)
+        }
+
+        items.push(...normalize(data))
+        url = forge.nextPageUrl(response, data)
+    }
+    return { items, response }
+}
+
+// fetch all pull requests (across all pages)
+// returns a promise resolving to { items, response }
+function listAllPRs(forge, urlInfo, requestHeaders) {
     console.log("List all pull requests")
 
-    const request = new Request(forge.listPRsUrl(urlInfo), { headers: requestHeaders })
-
-    const response = await fetch(request)
-    //if (!response.ok) {
-    //    throw new Error(`Failed to list pull requests: [${response.status}] ${response.statusText}: ${data.message}`)
-    //}
-    return response
+    return fetchAllPages(
+        forge, forge.listPRsUrl(urlInfo), requestHeaders,
+        data => forge.pullRequests(data),
+        "Failed to list pull requests")
 }
 
-// fetch modified files of a pull request
-// returns a promise with the list of modified files for a pull request
-async function getModifiedFiles(forge, urlInfo, requestHeaders, pr) {
-    // fetch the API
-    const request = new Request(forge.filesUrl(urlInfo, pr), { headers: requestHeaders })
-
-    const response = await fetch(request)
-    const data = await response.json()
-
-    if (!response.ok) {
-        throw new Error(`Failed to list pull request modified files: [${response.status}] ${response.statusText}: ${data}`)
-    }
-    return data
-}
-
-// get filenames from a list of modified files
-// returns a list of filenames
-export function getFilenames(forge, files) {
-    return forge.filenames(files)
+// fetch the filenames modified by a pull request (across all pages)
+// returns a promise resolving to the list of filenames
+async function getModifiedFilenames(forge, urlInfo, requestHeaders, pr) {
+    const { items } = await fetchAllPages(
+        forge, forge.filesUrl(urlInfo, pr), requestHeaders,
+        data => forge.filenames(data),
+        "Failed to list pull request modified files")
+    return items
 }
 
 // returns the key if the item is in the array
@@ -98,8 +104,7 @@ export function addIfIncluded(array, item, key) {
 // per-PR file fetches run concurrently and the caller awaits them together
 export function getFilesPRs(forge, urlInfo, requestHeaders, prs) {
     return prs.map(async pr => {
-        const files = await getModifiedFiles(forge, urlInfo, requestHeaders, pr)
-        const filenames = getFilenames(forge, files)
+        const filenames = await getModifiedFilenames(forge, urlInfo, requestHeaders, pr)
         return addIfIncluded(filenames, urlInfo.filepath, forge.prNumber(pr))
     })
 }
@@ -128,28 +133,17 @@ async function checkRateLimit(forge, requestHeaders) {
     }
 }
 
-// check the rate limit comparing to PRs length
-async function checkRateLimitFromPRs(forge, response) {
+// check the rate limit comparing to PRs length (one files request each)
+function checkRateLimitFromPRs(forge, prs, response) {
     // get the rate limit header (forges without one skip the comparison)
     const remaining = forge.rateLimit ? response.headers.get(forge.rateLimit.header) : null
     console.log("Rate limit remaining (from header):", remaining)
 
-    const data = await response.json()
-
-    // check the "list" response
-    if (!response.ok) {
-        throw new Error(`Failed to list pull requests: [${response.status}] ${response.statusText}: ${data.message}`)
-    }
-
-    // normalize the list response to an array of PRs (forge-specific)
-    const list = forge.pullRequests(data)
-
     // compare number of pull requests with rate limit
-    console.log("Number of pull requests:", list.length)
-    if (remaining !== null && Number(remaining) <= list.length) {
+    console.log("Number of pull requests:", prs.length)
+    if (remaining !== null && Number(remaining) <= prs.length) {
         throw new Error("Rate limit reached!")
     }
-    return list
 }
 
 function render(prs, tabId) {
@@ -200,9 +194,9 @@ async function main(tab) {
         const requestHeaders = await loadAuthHeaders(forge)
         await checkRateLimit(forge, requestHeaders)
 
-        // list pull requests, then keep those that touch the file
-        const response = await listAllPRs(forge, urlInfo, requestHeaders)
-        const prs = await checkRateLimitFromPRs(forge, response)
+        // list pull requests (all pages), then keep those that touch the file
+        const { items: prs, response } = await listAllPRs(forge, urlInfo, requestHeaders)
+        checkRateLimitFromPRs(forge, prs, response)
         const values = await Promise.all(getFilesPRs(forge, urlInfo, requestHeaders, prs))
 
         // render (dropping the PRs that don't touch the file)

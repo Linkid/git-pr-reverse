@@ -40,7 +40,9 @@ Runs on every tab update:
 1.   **Parse the URL**: extract `projectKey`, `repoSlug` and `filepath`
 2.   **Detect the forge** by hostname (exact match or subdomain)
 3.   **Load the auth headers** for the forge from the stored token (if any)
-4.   **Promise chain**: list PRs, get files, keep PRs including the file
+4.   **Promise chain**: list PRs, get files, keep PRs including the file —
+     following the forge's API pagination, so every page of PRs and files is
+     seen
 5.   **Render**: set the toolbar badge text and store the result under the
      tab's key in `browser.storage.session` — `{ prs }`, or `{ error }` when a
      request failed. Per-tab keys keep concurrent tabs from clobbering each
@@ -149,6 +151,7 @@ Here is the interface for each forge:
 | `filenames`  | filenames touched by a PR, from the files-endpoint response        |
 | `prNumber`   | identifier of a PR (used in URLs and displayed)                    |
 | `prWebUrl`   | web (non-API) URL of a PR, for the popup links                     |
+| `nextPageUrl` | `(response, data) → URL` of the next page of a paginated API response, or `null` on the last page |
 | `rateLimit`  | optional `{ url, header, remaining(data) }`; `null` if unsupported |
 | `tokenStorageKey` | optional `storage.local` key holding the user's token; omit for no auth |
 | `authHeader` | optional `(token) → headers` sent with API requests; omit for no auth |
