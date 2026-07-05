@@ -22,7 +22,9 @@ See the [README overview](README.md#overview) section.
 
 ## How it works
 
-The extension has two parts that communicate through `browser.storage.local`.
+The extension has two parts that communicate through per-tab results in
+`browser.storage.session` (configuration — tokens and self-hosted instances —
+lives in `browser.storage.local`).
 
 It runs on both Firefox and Chrome from a single source tree:
 - the manifest declares both `background.scripts` (Firefox event page) and
@@ -39,18 +41,22 @@ Runs on every tab update:
 2.   **Detect the forge** by hostname (exact match or subdomain)
 3.   **Load the auth headers** for the forge from the stored token (if any)
 4.   **Promise chain**: list PRs, get files, keep PRs including the file
-5.   **Render**: set the toolbar badge text and stores `{ tabId, prs }` in
-     `browser.storage.local`.
+5.   **Render**: set the toolbar badge text and store the result under the
+     tab's key in `browser.storage.session` — `{ prs }`, or `{ error }` when a
+     request failed. Per-tab keys keep concurrent tabs from clobbering each
+     other; the key is dropped when the tab closes or loads a new page.
 
 ### Popup
 
 On open, the popup:
 
 1.   shows a localized **loading state**
-2.   reads `{ tabId, prs }` from storage:
-    -   if it matches the active tab, renders the PR list
-    -   otherwise shows a localized **error** state
-    -   if the list is empty, shows a localized **empty** state.
+2.   reads the active tab's result from session storage:
+    -   `{ prs }`: renders the PR list (or a localized **empty** state when no
+        PR touches the file)
+    -   `{ error }`: shows a localized **error** state
+    -   nothing stored yet: the background is still fetching — keeps the
+        loading state and renders when the result lands.
 
 ## Project layout
 
