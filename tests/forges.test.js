@@ -26,13 +26,21 @@ test("forgeForHostname matches gitlab.com", () => {
     assert.equal(forgeForHostname("gitlab.com"), gitlab)
 })
 
-test("forgeForHostname matches a subdomain containing the hostname", () => {
-    // hostnames are matched as substrings of the page hostname
+test("forgeForHostname matches a subdomain of a forge hostname", () => {
     assert.equal(forgeForHostname("www.github.com"), github)
 })
 
 test("forgeForHostname returns null for an unknown forge", () => {
     assert.equal(forgeForHostname("example.com"), null)
+})
+
+test("forgeForHostname does not match a forge hostname as a mere substring", () => {
+    // a hostile lookalike host must not be treated as the real forge (it would
+    // trigger API calls carrying the user's token for attacker-chosen paths)
+    assert.equal(forgeForHostname("github.com.evil.example"), null)
+    // an unrelated host merely containing the name is not the public forge
+    assert.equal(forgeForHostname("mygithub.company.com"), null)
+    assert.equal(forgeForHostname("evil-gitlab.com"), null)
 })
 
 //

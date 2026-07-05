@@ -8,8 +8,9 @@
 //
 // Adapter interface:
 //   label       human-readable forge name, shown in the options page UI
-//   hostnames   array of substrings matched against the page hostname (for a
-//               family instance this is its single configured hostname)
+//   hostnames   array of hostnames matched against the page hostname, exactly
+//               or as a subdomain (for a family instance this is its single
+//               configured hostname)
 //   base_url    API root URL the endpoint builders below are hung off of
 //   parseUrl    (URL) -> { projectKey, repoSlug, filepath, origin } | null
 //   listPRsUrl  (info) -> API endpoint listing the repo's open pull requests
@@ -394,10 +395,14 @@ export function buildSelfHostedForge({ type, hostname }) {
 
 // pick a forge adapter for a page hostname, considering both the built-in
 // static forges and the user's configured self-hosted instances (null if none
-// matches). Static forges win; self-hosted instances are matched by exact
-// hostname to avoid one instance shadowing another.
+// matches). Static forges win; they match the exact hostname or a subdomain of
+// it — never a mere substring, so a hostile lookalike host (github.com.evil.example)
+// or an unrelated self-hosted forge (mygithub.company.com) stays unmatched.
+// Self-hosted instances are matched by exact hostname to avoid one instance
+// shadowing another.
 export function forgeForHostname(hostname, instances = []) {
-    const staticForge = staticForges.find(f => f.hostnames.some(h => hostname.includes(h)))
+    const staticForge = staticForges.find(f =>
+        f.hostnames.some(h => hostname === h || hostname.endsWith(`.${h}`)))
     if (staticForge) return staticForge
 
     const instance = instances.find(i => i.hostname === hostname)

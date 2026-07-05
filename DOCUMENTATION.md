@@ -36,7 +36,7 @@ It runs on both Firefox and Chrome from a single source tree:
 Runs on every tab update:
 
 1.   **Parse the URL**: extract `projectKey`, `repoSlug` and `filepath`
-2.   **Detect the forge** by hostname
+2.   **Detect the forge** by hostname (exact match or subdomain)
 3.   **Load the auth headers** for the forge from the stored token (if any)
 4.   **Promise chain**: list PRs, get files, keep PRs including the file
 5.   **Render**: set the toolbar badge text and stores `{ tabId, prs }` in
@@ -134,7 +134,7 @@ Here is the interface for each forge:
 | Member       | Purpose                                                            |
 | ------------ | ------------------------------------------------------------------ |
 | `label`      | human-readable forge name                                          |
-| `hostnames`  | array of hostnames matched against the page (one per family instance) |
+| `hostnames`  | array of hostnames matched against the page, exactly or as a subdomain (one per family instance) |
 | `base_url`   | API root URL the endpoint builders are hung off of                |
 | `parseUrl`   | `(URL) → { projectKey, repoSlug, filepath, origin }` or `null`     |
 | `listPRsUrl` | API endpoint listing the repo's open PRs                           |
