@@ -128,7 +128,7 @@ test("render shows the empty state when no PR touches the file", () => {
 test("renderError replaces the list with an error element", () => {
     reset()
 
-    renderError(urlInfo)
+    renderError()
 
     const { newNode, oldNode } = documentMock.body.replaced
     assert.equal(oldNode, prsNode)
