@@ -1,6 +1,6 @@
 import { browser } from './browser.js'
 import { forgeForHostname } from './forges.js'
-import { loadInstances } from './storage.js'
+import { loadInstances, saveTabResult, clearTabResult } from './storage.js'
 
 //
 // Main
@@ -159,9 +159,8 @@ function render(prs, tabId) {
         tabId: tabId
     })
 
-    // save results
-    // keys: "tabId", "prs"
-    browser.storage.local.set({ tabId, prs })
+    // save the results for the popup, keyed by tab
+    saveTabResult(tabId, { prs })
 }
 
 async function main(tab) {
@@ -192,6 +191,10 @@ async function main(tab) {
         return
     }
 
+    // drop the result of the tab's previous page: the popup shows its loading
+    // state until this page's result lands
+    await clearTabResult(tab.id)
+
     try {
         // load the stored API token, then check the forge rate limit
         const requestHeaders = await loadAuthHeaders(forge)
@@ -210,7 +213,8 @@ async function main(tab) {
             text: "err",
             tabId: tab.id
         })
-        // display the error
+        // store the error state for the popup and display the error
+        saveTabResult(tab.id, { error: `${error}` })
         console.error(`${error}`)
     }
 }
@@ -233,13 +237,10 @@ function handleUpdated(tabId, changeInfo, tabInfo) {
 }
 
 async function handleRemoved(tabId, removeInfo) {
-    // remove info from storage
-    const results = await browser.storage.local.get()
-    if (Object.keys(results).length != 0 && results.tabId == tabId) {
-        try {
-            await browser.storage.local.remove(["tabId", "prs"])
-        } catch (error) {
-            console.error(`Error: ${error}`)
-        }
+    // forget the closed tab's result
+    try {
+        await clearTabResult(tabId)
+    } catch (error) {
+        console.error(`Error: ${error}`)
     }
 }

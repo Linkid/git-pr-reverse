@@ -11,19 +11,31 @@ import assert from "node:assert/strict"
 // process, so it cannot leak into other test files. Both assumptions break
 // under an in-process runner (e.g. --test-isolation=none).
 
-// a stub storage.local recording the last set()/remove() and returning a
-// configurable backing object from get()
+// stub storage areas recording the last set()/remove() and returning a
+// configurable backing object from get(); session also records its onChanged
+// listeners so tests can fire changes by hand
 let backing = {}
-const calls = { set: null }
+let sessionBacking = {}
+const sessionListeners = []
+const calls = { set: null, sessionSet: null, sessionRemoved: null }
 globalThis.browser = {
     storage: {
         local: {
             get: async (key) => (key in backing ? { [key]: backing[key] } : {}),
             set: async (obj) => { calls.set = obj },
         },
+        session: {
+            get: async (key) => (key in sessionBacking ? { [key]: sessionBacking[key] } : {}),
+            set: async (obj) => { calls.sessionSet = obj },
+            remove: async (key) => { calls.sessionRemoved = key },
+            onChanged: { addListener: (fn) => sessionListeners.push(fn) },
+        },
     },
 }
-const { loadInstances, saveInstances } = await import("../storage.js")
+const {
+    loadInstances, saveInstances,
+    saveTabResult, loadTabResult, clearTabResult, onTabResult,
+} = await import("../storage.js")
 
 test("loadInstances returns the stored instances", async () => {
     backing = { selfHostedInstances: [{ type: "gitlab", hostname: "git.example.com" }] }
@@ -41,4 +53,42 @@ test("saveInstances writes under the selfHostedInstances key", async () => {
     const instances = [{ type: "forgejo", hostname: "code.example.com" }]
     await saveInstances(instances)
     assert.deepEqual(calls.set, { selfHostedInstances: instances })
+})
+
+//
+// per-tab popup results (session storage)
+//
+test("saveTabResult writes under the tab's key in session storage", async () => {
+    await saveTabResult(7, { prs: [1, 2] })
+    assert.deepEqual(calls.sessionSet, { "prs:7": { prs: [1, 2] } })
+})
+
+test("loadTabResult returns the result stored for the tab", async () => {
+    sessionBacking = { "prs:7": { prs: [42] } }
+    assert.deepEqual(await loadTabResult(7), { prs: [42] })
+})
+
+test("loadTabResult returns undefined while no result is stored", async () => {
+    sessionBacking = {}
+    assert.equal(await loadTabResult(7), undefined)
+})
+
+test("clearTabResult removes the tab's key", async () => {
+    await clearTabResult(7)
+    assert.equal(calls.sessionRemoved, "prs:7")
+})
+
+test("onTabResult fires only for its own tab's stored results", () => {
+    const seen = []
+    onTabResult(7, result => seen.push(result))
+    const listener = sessionListeners.at(-1)
+
+    // another tab's result is ignored
+    listener({ "prs:8": { newValue: { prs: [1] } } })
+    // a removal (no newValue) is ignored
+    listener({ "prs:7": { oldValue: { prs: [1] } } })
+    // this tab's stored result fires the callback
+    listener({ "prs:7": { newValue: { error: "boom" } } })
+
+    assert.deepEqual(seen, [{ error: "boom" }])
 })

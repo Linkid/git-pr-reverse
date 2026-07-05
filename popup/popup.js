@@ -1,7 +1,7 @@
 import { browser } from "../browser.js"
 import { forgeForHostname } from "../forges.js"
 import { localize } from "../i18n.js"
-import { loadInstances } from "../storage.js"
+import { loadInstances, loadTabResult, onTabResult } from "../storage.js"
 
 //
 // Functions
@@ -53,9 +53,12 @@ export function renderError() {
     div.setAttribute("id", "error")
     div.textContent = browser.i18n.getMessage("popupErrorMessage")
 
-    // replace the ul element with the div element
+    // replace the ul element with the div element (already gone when an
+    // earlier result showed the error state)
     const ul = document.getElementById("prs")
-    document.body.replaceChild(div, ul)
+    if (ul) {
+        document.body.replaceChild(div, ul)
+    }
 }
 
 //
@@ -73,13 +76,16 @@ async function init() {
         return
     }
 
-    // get the prs list and render
-    const result = await browser.storage.local.get()
-    if (result.tabId == tabId) {
-        render(result.prs, urlInfo)
-    } else {
-        // error in bg script
-        renderError()
+    // show a result: the PR list on success, the error state on failure
+    const show = result => result.error ? renderError() : render(result.prs, urlInfo)
+
+    // the result is stored per tab; none stored yet means the background is
+    // still fetching, so keep the loading state and show the result when the
+    // background stores it (the listener registers first to not miss it)
+    onTabResult(tabId, show)
+    const result = await loadTabResult(tabId)
+    if (result) {
+        show(result)
     }
 }
 // register the popup logic against the browser; skipped when this module is
