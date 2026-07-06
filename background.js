@@ -176,14 +176,15 @@ async function main(tab) {
         return
     }
 
-    browser.action.enable(tab.id)
-
-    // get project info from the URL (forge-specific parsing)
+    // get project info from the URL (forge-specific parsing); enable the
+    // action only once the URL is known good, so the badge never flickers
+    // on non-file pages (disable covers a file -> non-file navigation)
     const urlInfo = forge.parseUrl(url)
     if (urlInfo == null) {
         browser.action.disable(tab.id)
         return
     }
+    browser.action.enable(tab.id)
 
     // drop the result of the tab's previous page: the popup shows its loading
     // state until this page's result lands
