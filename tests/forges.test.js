@@ -111,13 +111,7 @@ test("github.filenames returns an empty array for no files", () => {
 //
 // rate limit
 //
-test("github.rateLimit.remaining reads the core remaining count", () => {
-    const data = { resources: { core: { remaining: 58 } } }
-    assert.equal(github.rateLimit.remaining(data), 58)
-})
-
-test("github.rateLimit exposes the endpoint and header", () => {
-    assert.equal(github.rateLimit.url, "https://api.github.com/rate_limit")
+test("github.rateLimit exposes the remaining-quota header", () => {
     assert.equal(github.rateLimit.header, "x-ratelimit-remaining")
 })
 

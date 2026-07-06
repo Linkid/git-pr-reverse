@@ -133,31 +133,9 @@ export function getFilesPRs(forge, urlInfo, requestHeaders, prs) {
     })
 }
 
-// check the rate limit
-async function checkRateLimit(forge, requestHeaders) {
-    // forges without a rate-limit endpoint skip this check
-    if (!forge.rateLimit) {
-        return
-    }
-
-    console.log("Check the rate limit")
-
-    // fetch the rate limit endpoint
-    const response = await fetch(forge.rateLimit.url, { headers: requestHeaders })
-    const data = await response.json()
-
-    if (!response.ok) {
-        throw new Error(`Failed to get rate limits: [${response.status}] ${response.statusText}: ${data.message}`)
-    }
-
-    const remaining = forge.rateLimit.remaining(data)
-    console.log("Rate limit remaining:", remaining)
-    if (remaining == 0) {
-        throw new Error("Rate limit reached!")
-    }
-}
-
-// check the rate limit comparing to PRs length (one files request each)
+// check the rate limit comparing to PRs length (one files request each); the
+// header rides on the list response, so the check costs no extra request (an
+// already-exhausted quota fails the list request itself)
 function checkRateLimitFromPRs(forge, prs, response) {
     // get the rate limit header (forges without one skip the comparison)
     const remaining = forge.rateLimit ? response.headers.get(forge.rateLimit.header) : null
@@ -215,9 +193,8 @@ async function main(tab) {
     await clearTabResult(tab.id)
 
     try {
-        // load the stored API token, then check the forge rate limit
+        // load the stored API token
         const requestHeaders = await loadAuthHeaders(forge)
-        await checkRateLimit(forge, requestHeaders)
 
         // list pull requests (all pages), then keep those that touch the file
         const { items: prs, response } = await listAllPRs(forge, urlInfo, requestHeaders)
