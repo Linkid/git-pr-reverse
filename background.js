@@ -91,14 +91,6 @@ async function getModifiedFilenames(forge, urlInfo, requestHeaders, pr) {
     return items
 }
 
-// returns the key if the item is in the array
-export function addIfIncluded(array, item, key) {
-    if (array.includes(item)) {
-        return key
-    }
-    return null
-}
-
 // cap on the number of per-PR file fetches in flight at once: firing one
 // request per PR on a repo with 100+ open PRs trips forge abuse protections
 // (e.g. GitHub's secondary rate limits, which watch concurrency, not quota)
@@ -129,7 +121,7 @@ export async function mapWithConcurrency(items, limit, task) {
 export function getFilesPRs(forge, urlInfo, requestHeaders, prs) {
     return mapWithConcurrency(prs, MAX_CONCURRENT_FETCHES, async pr => {
         const filenames = await getModifiedFilenames(forge, urlInfo, requestHeaders, pr)
-        return addIfIncluded(filenames, urlInfo.filepath, forge.prNumber(pr))
+        return filenames.includes(urlInfo.filepath) ? forge.prNumber(pr) : null
     })
 }
 
