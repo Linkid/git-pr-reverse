@@ -37,12 +37,13 @@ It runs on both Firefox and Chrome from a single source tree:
 
 Runs on every tab update:
 
-1.   **Parse the URL**: extract `projectKey`, `repoSlug` and `filepath`
-2.   **Detect the forge** by hostname (exact match or subdomain)
+1.   **Detect the forge** by hostname (exact match or subdomain)
+2.   **Parse the URL**: extract `projectKey`, `repoSlug` and `filepath`
 3.   **Load the auth headers** for the forge from the stored token (if any)
 4.   **Promise chain**: list PRs, get files, keep PRs including the file —
      following the forge's API pagination, so every page of PRs and files is
-     seen
+     seen. The per-PR file fetches run concurrently, capped at 10 in flight
+     so a repo with many open PRs doesn't trip forge abuse protections
 5.   **Render**: set the toolbar badge text and store the result under the
      tab's key in `browser.storage.session` — `{ prs }`, or `{ error }` when a
      request failed. Per-tab keys keep concurrent tabs from clobbering each

@@ -99,11 +99,35 @@ export function addIfIncluded(array, item, key) {
     return null
 }
 
+// cap on the number of per-PR file fetches in flight at once: firing one
+// request per PR on a repo with 100+ open PRs trips forge abuse protections
+// (e.g. GitHub's secondary rate limits, which watch concurrency, not quota)
+const MAX_CONCURRENT_FETCHES = 10
+
+// run task(item) over the items with at most `limit` tasks in flight; resolves
+// to the results in item order. A worker pool: each worker pulls the next
+// unclaimed index until the items run out, so a slot frees as soon as its task
+// settles. Rejects on the first task error, like Promise.all.
+export async function mapWithConcurrency(items, limit, task) {
+    const results = new Array(items.length)
+    let next = 0
+    const workers = Array.from({ length: Math.min(limit, items.length) },
+        async () => {
+            while (next < items.length) {
+                const index = next++
+                results[index] = await task(items[index])
+            }
+        })
+    await Promise.all(workers)
+    return results
+}
+
 // get all pull requests containing a file
-// returns a list of promises, each resolving to a PR number (or null); the
-// per-PR file fetches run concurrently and the caller awaits them together
+// returns a promise resolving to a list of PR numbers (null for the PRs that
+// don't touch the file); the per-PR file fetches run concurrently, capped at
+// MAX_CONCURRENT_FETCHES in flight
 export function getFilesPRs(forge, urlInfo, requestHeaders, prs) {
-    return prs.map(async pr => {
+    return mapWithConcurrency(prs, MAX_CONCURRENT_FETCHES, async pr => {
         const filenames = await getModifiedFilenames(forge, urlInfo, requestHeaders, pr)
         return addIfIncluded(filenames, urlInfo.filepath, forge.prNumber(pr))
     })
@@ -198,7 +222,7 @@ async function main(tab) {
         // list pull requests (all pages), then keep those that touch the file
         const { items: prs, response } = await listAllPRs(forge, urlInfo, requestHeaders)
         checkRateLimitFromPRs(forge, prs, response)
-        const values = await Promise.all(getFilesPRs(forge, urlInfo, requestHeaders, prs))
+        const values = await getFilesPRs(forge, urlInfo, requestHeaders, prs)
 
         // render (dropping the PRs that don't touch the file)
         render(values.filter(x => x), tab.id)
