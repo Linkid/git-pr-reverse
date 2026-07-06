@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { addIfIncluded, authHeadersFor, getFilesPRs, fetchAllPages } from "../background.js"
+import { addIfIncluded, authHeadersFor, getFilesPRs, fetchAllPages, mapWithConcurrency } from "../background.js"
 import { github } from "../forges.js"
 
 //
@@ -109,6 +109,54 @@ test("fetchAllPages throws on a non-ok response", async () => {
 })
 
 //
+// mapWithConcurrency
+//
+test("mapWithConcurrency caps the tasks in flight and keeps item order", async () => {
+    // each task parks its resolver so the test controls when a slot frees
+    const resolvers = []
+    let started = 0
+    const task = item => new Promise(resolve => {
+        started++
+        resolvers.push(() => resolve(item * 10))
+    })
+
+    const result = mapWithConcurrency([0, 1, 2, 3, 4], 2, task)
+
+    // only `limit` tasks start; the rest wait for a slot
+    assert.equal(started, 2)
+
+    // finishing a task (out of order) frees its slot for the next item
+    resolvers[1]()
+    await Promise.resolve()
+    assert.equal(started, 3)
+    resolvers[0]()
+    await Promise.resolve()
+    assert.equal(started, 4)
+    resolvers[3]()
+    await Promise.resolve()
+    assert.equal(started, 5)
+    resolvers[2]()
+    resolvers[4]()
+
+    // results follow the item order, not the completion order
+    assert.deepEqual(await result, [0, 10, 20, 30, 40])
+})
+
+test("mapWithConcurrency handles more slots than items", async () => {
+    assert.deepEqual(await mapWithConcurrency([1, 2], 10, async x => x + 1), [2, 3])
+})
+
+test("mapWithConcurrency resolves to an empty array for no items", async () => {
+    assert.deepEqual(await mapWithConcurrency([], 10, async x => x), [])
+})
+
+test("mapWithConcurrency rejects when a task throws", async () => {
+    await assert.rejects(
+        mapWithConcurrency([1, 2], 2, async x => { throw new Error(`task ${x}`) }),
+        /task 1/)
+})
+
+//
 // getFilesPRs — regression guard for the per-tab state race
 //
 // getFilesPRs must derive its result solely from the forge/urlInfo passed to
@@ -134,8 +182,8 @@ test("getFilesPRs uses its own arguments under interleaved concurrent calls", as
 
     try {
         // both calls start and reach their `await fetch` before either resolves
-        const callA = Promise.all(getFilesPRs(github, { filepath: "a.js" }, {}, [{ number: 1 }]))
-        const callB = Promise.all(getFilesPRs(github, { filepath: "missing.js" }, {}, [{ number: 2 }]))
+        const callA = getFilesPRs(github, { filepath: "a.js" }, {}, [{ number: 1 }])
+        const callB = getFilesPRs(github, { filepath: "missing.js" }, {}, [{ number: 2 }])
 
         // release out of order (B before A) to force interleaving
         resolvers[1]()
