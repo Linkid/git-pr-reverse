@@ -21,8 +21,8 @@
 //   prWebUrl    (info, prNumber) -> web (non-API) URL of a PR, for popup links
 //   nextPageUrl (response, data) -> URL of the next page of a paginated API
 //               response, or null on the last page
-//   rateLimit   optional { url, header, remaining(data) }; null if the forge
-//               exposes no rate-limit endpoint
+//   rateLimit   optional { header }: the response header carrying the
+//               remaining request quota; null if the forge exposes none
 //   tokenStorageKey  optional storage.local key holding the user's API token;
 //                    omit if the forge supports no authentication
 //   authHeader  optional (token) -> headers object sent with API requests when
@@ -87,9 +87,7 @@ export const github = {
     },
 
     rateLimit: {
-        url: "https://api.github.com/rate_limit",
         header: "x-ratelimit-remaining",
-        remaining: (data) => data.resources.core.remaining,
     },
 
     // GitHub accepts classic and fine-grained personal access tokens as a

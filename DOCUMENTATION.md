@@ -153,7 +153,7 @@ Here is the interface for each forge:
 | `prNumber`   | identifier of a PR (used in URLs and displayed)                    |
 | `prWebUrl`   | web (non-API) URL of a PR, for the popup links                     |
 | `nextPageUrl` | `(response, data) → URL` of the next page of a paginated API response, or `null` on the last page |
-| `rateLimit`  | optional `{ url, header, remaining(data) }`; `null` if unsupported |
+| `rateLimit`  | optional `{ header }`: response header carrying the remaining request quota; `null` if unsupported |
 | `tokenStorageKey` | optional `storage.local` key holding the user's token; omit for no auth |
 | `authHeader` | optional `(token) → headers` sent with API requests; omit for no auth |
 
