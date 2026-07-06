@@ -86,6 +86,10 @@ On open, the popup:
 ├── static/
 │   ├── icon-*.png         # toolbar / store icons
 │   └── icon.svg           # source icon
+├── tests/                 # test suite (node --test), one file per module
+├── package.json           # npm scripts + dev dependencies (ESLint)
+├── eslint.config.js       # ESLint flat config
+├── .web-ext-config.mjs    # web-ext config: files to keep out of the package
 └── .github/               # CI workflows (lint, test, build) + dependabot
 ```
 

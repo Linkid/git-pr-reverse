@@ -224,7 +224,7 @@ function handleUpdated(tabId, changeInfo, tabInfo) {
     }
 }
 
-async function handleRemoved(tabId, removeInfo) {
+async function handleRemoved(tabId) {
     // forget the closed tab's result
     try {
         await clearTabResult(tabId)
