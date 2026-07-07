@@ -6,13 +6,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "web-ext build --overwrite-dest",
     "lint": "eslint .",
+    "lint:webext": "web-ext lint",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='tests/**'"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.6.0",
-    "globals": "^17.7.0"
+    "globals": "^17.7.0",
+    "web-ext": "^10.4.0"
   }
 }
