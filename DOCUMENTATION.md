@@ -162,6 +162,8 @@ Here is the interface for each forge:
 | `rateLimit`       | optional `{ header }`: response header carrying the remaining request quota; `null` if unsupported |
 | `tokenStorageKey` | optional `storage.local` key holding the user's token; omit for no auth                            |
 | `authHeader`      | optional `(token) → headers` sent with API requests; omit for no auth                              |
+| `findPRsForFile`  | optional async `(info, headers) → [prNumbers]`: a single query answering "which open PRs/changes touch this file", bypassing the list + per-PR fan-out |
+| `permissionHostname` | optional hostname the adapter queries when it differs from the browsed page's (a separate review server); drives the permission check |
 
 A forge that omits `tokenStorageKey`/`authHeader` simply stays unauthenticated;
 declaring both opts it into the [Authentication](#authentication) flow and the
@@ -206,6 +208,63 @@ Supported self-hosted software:
 - **Forgejo / Gitea**: https://forgejo.org/docs/latest/user/api-usage/
 - **Bitbucket Server / Data Center**: https://developer.atlassian.com/server/bitbucket/rest/latest/
   (self-hosted only — a different API from Bitbucket Cloud)
+- **Gerrit**: https://gerrit-review.googlesource.com/Documentation/rest-api-changes.html
+  (a review server paired with a code-hosting mirror — see below)
+
+### Review-backed forges (Gerrit)
+
+Some deployments split the two roles a forge normally holds: the code is
+*browsed* on one host (a mirror running one of the supported families) while
+the reviews live on a separate review server, where the extension must send its
+queries. Such an instance is configured with three pieces: the mirror hostname
+(matched against the page), the software the mirror runs (which family's URL
+layout to parse), and the review server URL (stored as
+`{ type, hostname, mirrorType, reviewUrl }`).
+
+Two interface members carry the mechanism, and are not specific to any review
+tool:
+
+- `findPRsForFile` — a review server can answer "which open changes touch this
+  file" in a single query, so the adapter skips the PR list + per-PR files
+  fan-out entirely (`background.js` takes this fast path whenever the member
+  exists);
+- `permissionHostname` — the queried host is the review server, not the
+  browsed page, so the host permission requested on add (and checked by the
+  background) targets it.
+
+For Gerrit specifically, `buildGerritForge()` implements the interface: it
+queries `GET {reviewUrl}/changes/?q=status:open project:<path> file:"<path>"`
+(the mirror's repo path is the review project name), strips the `)]}'` XSSI
+prefix Gerrit puts before its JSON, and links each change to
+`{reviewUrl}/c/<project>/+/<number>`. A truncated result page is flagged by
+`_more_changes` on its last change and followed with the `S` offset parameter,
+so more than a page's worth of open changes is still counted in full. With
+credentials configured (`username:HTTP-password`, sent as HTTP Basic), the
+query goes through the authenticated `/a/` endpoint prefix instead.
+
+#### Configuring a pairing (example: OpenDev)
+
+OpenDev (where OpenStack development happens) hosts its code on a Gitea
+mirror, `opendev.org`, and reviews it on a separate Gerrit,
+`review.opendev.org`. To register the pairing:
+
+1. open the extension's **options page**;
+2. under *Self-hosted forges*, pick the **Gerrit** type — two extra fields
+   appear;
+3. enter the **code-hosting hostname** you browse files on: `opendev.org`;
+4. pick the software that site runs — **Forgejo / Gitea** here — so the
+   extension can parse its file URLs;
+5. enter the **review server URL**: `https://review.opendev.org`;
+6. click *Add* and **grant the permission** the browser asks for — it targets
+   the review server, the only host the extension queries.
+
+Then browse any file on the mirror, e.g.
+`https://opendev.org/openstack/nova/src/branch/master/nova/compute/api.py`:
+the toolbar badge shows the number of open changes touching it, and the popup
+links each one into the review UI. Public review servers like OpenDev's answer
+anonymously; for one that requires sign-in, put `username:HTTP-password` (the
+HTTP credentials from the Gerrit account settings) in the instance's
+credentials field.
 
 To support new self-hosted software, define its family and add it to
 `selfHostedFamilies`.

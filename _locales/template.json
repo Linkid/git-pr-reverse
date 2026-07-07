@@ -86,5 +86,17 @@
   "optionsPermissionDenied": {
     "message": "",
     "description": ""
+  },
+  "optionsReviewUrlPlaceholder": {
+    "message": "",
+    "description": ""
+  },
+  "optionsInvalidReviewUrl": {
+    "message": "",
+    "description": ""
+  },
+  "optionsGerritTokenHint": {
+    "message": "",
+    "description": ""
   }
 }

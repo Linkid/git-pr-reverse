@@ -27,6 +27,10 @@
             <select id="instance-type" class="options__input"></select>
             <input id="instance-hostname" class="options__input" type="text"
                    autocomplete="off" spellcheck="false">
+            <!-- gerrit-only fields: the mirror's software and the review server -->
+            <select id="instance-mirror-type" class="options__input" hidden></select>
+            <input id="instance-review-url" class="options__input" type="text"
+                   autocomplete="off" spellcheck="false" hidden>
             <button type="button" id="add-instance" class="options__add-btn"
                     i18n=1>__MSG_optionsAddInstance__</button>
           </div>
