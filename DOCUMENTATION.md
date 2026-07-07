@@ -13,6 +13,7 @@ request question: instead of *"which files does this PR change?"*, it tells you
 - [Authentication](#authentication)
 - [Forges](#forges)
 - [Internationalization](#internationalization)
+- [Development](#development)
 - [Install](#install)
 - [Troubleshooting](#troubleshooting)
 
@@ -223,6 +224,23 @@ To add a locale:
 If you add a translatable string:
 - add the string to `_locales/template.json`
 - update `_locales/en/messages.json` with a description and a translation
+
+## Development
+
+The dev tools (ESLint, web-ext) are npm dev dependencies; install them once
+with `npm ci`. Then:
+
+- `npm test` — run the test suite (`npm run test:coverage` adds coverage)
+- `npm run lint` — lint the scripts with ESLint
+- `npm run lint:webext` — validate the extension with `web-ext lint`. It
+  always warns that Firefox ignores the Chrome-only
+  `background.service_worker` manifest key; the CI lint workflow strips that
+  key first and escalates any other warning to an error
+- `npm run build` — package the extension into `web-ext-artifacts/`
+  (the development files listed in `.web-ext-config.mjs` stay out)
+
+The CI workflows run the same scripts: lint and test on every push, build on
+the main branch and tags.
 
 ## Install
 ### Firefox
