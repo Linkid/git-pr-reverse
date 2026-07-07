@@ -695,11 +695,79 @@ test("gerrit queries the review host, not the browsed mirror", () => {
     assert.equal(forge.permissionHostname, "review.example.com")
 })
 
-test("selfHostedTypes offers gerrit; gerritMirrorTypes offers the families", () => {
+test("selfHostedTypes offers gerrit; gerritMirrorTypes offers the mirror layouts", () => {
     assert.ok(selfHostedTypes().some(t => t.type === "gerrit"))
-    // gerrit itself cannot be a mirror: the mirror list is the families only
+    // gerrit itself cannot be a mirror; gitiles is mirror-only, so it is
+    // offered here but not as a standalone self-hosted type
     const mirrors = gerritMirrorTypes().map(t => t.type)
-    assert.deepEqual(mirrors, ["gitlab", "forgejo", "bitbucket-server"])
+    assert.deepEqual(mirrors, ["gitlab", "forgejo", "bitbucket-server", "gitiles"])
+    assert.ok(!selfHostedTypes().some(t => t.type === "gitiles"))
+})
+
+//
+// Gitiles mirror layout
+//
+const gitilesInstance = {
+    type: "gerrit",
+    hostname: "go.googlesource.com",
+    reviewUrl: "https://go-review.googlesource.com",
+    mirrorType: "gitiles",
+}
+
+test("gitiles mirror parses a full-ref file URL", () => {
+    const forge = buildGerritForge(gitilesInstance)
+    const info = forge.parseUrl(
+        new URL("https://go.googlesource.com/go/+/refs/heads/master/src/net/http/server.go"))
+    assert.deepEqual(info, {
+        projectPath: "go",
+        filepath: "src/net/http/server.go",
+        origin: "https://go.googlesource.com",
+    })
+})
+
+test("gitiles mirror parses a single-segment ref (branch, tag or commit)", () => {
+    const forge = buildGerritForge(gitilesInstance)
+    const byBranch = forge.parseUrl(
+        new URL("https://go.googlesource.com/go/+/master/src/net/http/server.go"))
+    assert.equal(byBranch.filepath, "src/net/http/server.go")
+
+    const byCommit = forge.parseUrl(
+        new URL("https://go.googlesource.com/go/+/2c1b5130aa3c30e11146dbcf7fca4bcf6de74dd2/README.md"))
+    assert.equal(byCommit.filepath, "README.md")
+})
+
+test("gitiles mirror keeps a multi-segment project path", () => {
+    const forge = buildGerritForge({
+        ...gitilesInstance,
+        hostname: "android.googlesource.com",
+        reviewUrl: "https://android-review.googlesource.com",
+    })
+    const info = forge.parseUrl(new URL(
+        "https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/core/java/android/app/Activity.java"))
+    assert.equal(info.projectPath, "platform/frameworks/base")
+    assert.equal(info.filepath, "core/java/android/app/Activity.java")
+    assert.equal(forge.prWebUrl(info, 321),
+        "https://android-review.googlesource.com/c/platform/frameworks/base/+/321")
+})
+
+test("gitiles mirror rejects non-file pages", () => {
+    const forge = buildGerritForge(gitilesInstance)
+    // repo home, ref-only tree root, log view
+    assert.equal(forge.parseUrl(new URL("https://go.googlesource.com/go")), null)
+    assert.equal(forge.parseUrl(new URL("https://go.googlesource.com/go/+/refs/heads/master")), null)
+    assert.equal(forge.parseUrl(new URL("https://go.googlesource.com/go/+log/refs/heads/master/src")), null)
+})
+
+test("gitiles mirror queries the review project by its full path", () => {
+    const forge = buildGerritForge(gitilesInstance)
+    const info = forge.parseUrl(
+        new URL("https://go.googlesource.com/go/+/refs/heads/master/src/net/http/server.go"))
+    assert.equal(forge.changesUrl(info),
+        "https://go-review.googlesource.com/changes/?q=" +
+        encodeURIComponent('status:open project:go file:"src/net/http/server.go"') +
+        "&n=100")
+    assert.equal(forge.prWebUrl(info, 628575),
+        "https://go-review.googlesource.com/c/go/+/628575")
 })
 
 test("forgeForHostname matches a gerrit instance by its mirror hostname", () => {

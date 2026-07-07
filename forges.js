@@ -415,17 +415,42 @@ export function parseGerritJson(text) {
 }
 
 // the Gerrit project name of a browse page: the mirror's full repo path
-// (owner/repo, or the nested project path on a GitLab mirror)
+// (owner/repo, or the nested project path on a GitLab or Gitiles mirror)
 function gerritProject(info) {
     return info.projectPath ?? `${info.projectKey}/${info.repoSlug}`
 }
 
+// Gitiles — the plain code browser usually deployed next to a Gerrit (the
+// *.googlesource.com hosts, e.g. the Go and Android projects). Mirror-only: it
+// exposes no pull requests of its own, so it is offered as a Gerrit mirror
+// layout but not as a standalone self-hosted forge type.
+const gitilesMirror = {
+    label: "Gitiles",
+
+    // file view: /{project}/+/{ref}/{filepath} — the project may span several
+    // path segments (platform/frameworks/base) and the ref is either a full
+    // refs/... name (refs/heads/main) or a single segment (branch, tag or
+    // commit). The lookahead keeps a ref-only tree URL from misparsing.
+    parseUrl(url) {
+        const m = url.pathname.match(
+            "^/(?<projectPath>.+?)/\\+/(?:refs/[^/]+/[^/]+|(?!refs/)[^/]+)/(?<filepath>.+)$")
+        if (!m) return null
+        return { ...m.groups, origin: url.origin }
+    },
+}
+
+// URL layouts a Gerrit mirror can use: every self-hosted family, plus the
+// mirror-only Gitiles
+function gerritMirrorFor(type) {
+    return type === "gitiles" ? gitilesMirror : selfHostedFamilies[type]
+}
+
 // build a Gerrit adapter from a configured instance: `hostname` is the browse
 // mirror matched against the page, `reviewUrl` the Gerrit origin queried for
-// changes, `mirrorType` the family the mirror runs (selects the URL parsing).
+// changes, `mirrorType` the software the mirror runs (selects the URL parsing).
 // Returns null when the config is incomplete or the mirror type is unknown.
 export function buildGerritForge({ hostname, reviewUrl, mirrorType }) {
-    const mirror = selfHostedFamilies[mirrorType]
+    const mirror = gerritMirrorFor(mirrorType)
     if (!mirror || !reviewUrl) return null
 
     let reviewHostname
@@ -537,13 +562,17 @@ export function selfHostedTypes() {
     ]
 }
 
-// mirror softwares a Gerrit instance can pair with (the families whose URL
-// layout the browse mirror may use), for the options page dropdown
+// mirror softwares a Gerrit instance can pair with (the layouts the browse
+// mirror may use: the families, plus the mirror-only Gitiles), for the options
+// page dropdown
 export function gerritMirrorTypes() {
-    return Object.entries(selfHostedFamilies).map(([type, family]) => ({
-        type,
-        label: family.label,
-    }))
+    return [
+        ...Object.entries(selfHostedFamilies).map(([type, family]) => ({
+            type,
+            label: family.label,
+        })),
+        { type: "gitiles", label: "Gitiles" },
+    ]
 }
 
 // storage.local key holding the (optional) token for a self-hosted instance;
