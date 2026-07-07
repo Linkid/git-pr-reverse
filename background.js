@@ -164,9 +164,12 @@ async function main(tab) {
     }
 
     // self-hosted instances need an optional host permission before the
-    // extension may call their API; skip quietly until the user grants it
+    // extension may call their API; skip quietly until the user grants it.
+    // The permission covers the queried host — the page hostname, unless the
+    // forge queries a separate host (a review server like Gerrit)
+    const queriedHostname = forge.permissionHostname ?? url.hostname
     if (forge.selfHosted &&
-        !(await browser.permissions.contains({ origins: [`*://${url.hostname}/*`] }))) {
+        !(await browser.permissions.contains({ origins: [`*://${queriedHostname}/*`] }))) {
         return
     }
 
@@ -187,6 +190,14 @@ async function main(tab) {
     try {
         // load the stored API token
         const requestHeaders = await loadAuthHeaders(forge)
+
+        // fast path: a forge that answers "which open PRs/changes touch this
+        // file" in one query (a review server like Gerrit) skips the PR list
+        // and the per-PR fan-out below
+        if (forge.findPRsForFile) {
+            render(await forge.findPRsForFile(urlInfo, requestHeaders), tab.id)
+            return
+        }
 
         // list pull requests (all pages), then keep those that touch the file
         const { items: prs, response } = await listAllPRs(forge, urlInfo, requestHeaders)

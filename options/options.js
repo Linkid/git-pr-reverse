@@ -1,5 +1,5 @@
 import { browser } from "../browser.js"
-import { authForges, selfHostedTypes, selfHostedTokenKey } from "../forges.js"
+import { authForges, gerritMirrorTypes, selfHostedTypes, selfHostedTokenKey } from "../forges.js"
 import { localize } from "../i18n.js"
 import { loadInstances, saveInstances } from "../storage.js"
 
@@ -135,15 +135,45 @@ function normalizeHostname(value) {
     }
 }
 
-// populate the software-type dropdown for the "add instance" form
-function renderTypeOptions() {
-    const select = document.getElementById("instance-type")
-    for (const { type, label } of selfHostedTypes()) {
+// normalize a user-entered review server address to an origin URL; accepts a
+// full URL or a bare hostname, returns null when it cannot be parsed
+function normalizeOrigin(value) {
+    let raw = value.trim()
+    if (!raw) return null
+    if (!raw.includes("://")) raw = `https://${raw}`
+    try {
+        return new URL(raw).origin || null
+    } catch {
+        return null
+    }
+}
+
+// the hostname whose permission an instance needs: the host it queries — the
+// review server for a Gerrit instance, the instance itself otherwise
+function permissionHostname(instance) {
+    try {
+        return instance.reviewUrl ? new URL(instance.reviewUrl).hostname : instance.hostname
+    } catch {
+        return instance.hostname
+    }
+}
+
+// fill a select element with { type, label } options
+function fillTypeSelect(id, types) {
+    const select = document.getElementById(id)
+    for (const { type, label } of types) {
         const option = document.createElement("option")
         option.value = type
         option.textContent = label
         select.appendChild(option)
     }
+}
+
+// populate the software-type dropdowns for the "add instance" form: the forge
+// type, and the mirror software a Gerrit instance pairs with
+function renderTypeOptions() {
+    fillTypeSelect("instance-type", selfHostedTypes())
+    fillTypeSelect("instance-mirror-type", gerritMirrorTypes())
 }
 
 // render one fieldset per configured self-hosted instance: its label, a token
@@ -157,9 +187,14 @@ async function renderInstances() {
     const typeLabels = Object.fromEntries(selfHostedTypes().map(t => [t.type, t.label]))
 
     for (const instance of instances) {
+        // a Gerrit instance shows its browse-mirror → review-server pairing
+        const hosts = instance.reviewUrl
+            ? `${instance.hostname} → ${instance.reviewUrl}`
+            : instance.hostname
         const fieldset = tokenFieldset({
-            legendText: `${instance.hostname} — ${typeLabels[instance.type] || instance.type}`,
+            legendText: `${hosts} — ${typeLabels[instance.type] || instance.type}`,
             storageKey: selfHostedTokenKey(instance.hostname),
+            hintKey: instance.type === "gerrit" ? "optionsGerritTokenHint" : undefined,
         })
 
         const remove = document.createElement("button")
@@ -173,14 +208,28 @@ async function renderInstances() {
     }
 }
 
-// add a self-hosted instance: validate the hostname, request the host
-// permission (this click is the required user gesture), then persist it
+// add a self-hosted instance: validate the hostname (and, for Gerrit, the
+// review server URL), request the queried host's permission (this click is the
+// required user gesture), then persist it
 async function addInstance() {
     const type = document.getElementById("instance-type").value
     const hostname = normalizeHostname(document.getElementById("instance-hostname").value)
     if (!hostname) {
         showStatus("optionsInvalidHostname", "instance-status")
         return
+    }
+
+    const instance = { type, hostname }
+    if (type === "gerrit") {
+        // a Gerrit instance pairs the browsed mirror with the review server
+        // it queries, and needs the mirror's URL layout to parse pages
+        const reviewUrl = normalizeOrigin(document.getElementById("instance-review-url").value)
+        if (!reviewUrl) {
+            showStatus("optionsInvalidReviewUrl", "instance-status")
+            return
+        }
+        instance.reviewUrl = reviewUrl
+        instance.mirrorType = document.getElementById("instance-mirror-type").value
     }
 
     try {
@@ -191,17 +240,19 @@ async function addInstance() {
             return
         }
 
-        // the extension may only call the instance API once the user grants
-        // access to its origin
-        const granted = await browser.permissions.request({ origins: [`*://${hostname}/*`] })
+        // the extension may only call the queried API (the review server for
+        // a Gerrit instance) once the user grants access to its origin
+        const granted = await browser.permissions.request(
+            { origins: [`*://${permissionHostname(instance)}/*`] })
         if (!granted) {
             showStatus("optionsPermissionDenied", "instance-status")
             return
         }
 
-        instances.push({ type, hostname })
+        instances.push(instance)
         await saveInstances(instances)
         document.getElementById("instance-hostname").value = ""
+        document.getElementById("instance-review-url").value = ""
         await renderInstances()
         await loadTokens()
         showStatus("optionsInstanceAdded", "instance-status")
@@ -211,14 +262,18 @@ async function addInstance() {
 }
 
 // remove a self-hosted instance: drop it from storage, forget its token and
-// give back the host permission we no longer need
+// give back the queried host's permission we no longer need
 async function removeInstance(hostname) {
     try {
-        const instances = (await loadInstances()).filter(i => i.hostname !== hostname)
+        const instances = await loadInstances()
+        const removed = instances.find(i => i.hostname === hostname)
 
-        await saveInstances(instances)
+        await saveInstances(instances.filter(i => i.hostname !== hostname))
         await browser.storage.local.remove(selfHostedTokenKey(hostname))
-        await browser.permissions.remove({ origins: [`*://${hostname}/*`] })
+        if (removed) {
+            await browser.permissions.remove(
+                { origins: [`*://${permissionHostname(removed)}/*`] })
+        }
 
         await renderInstances()
         showStatus("optionsInstanceRemoved", "instance-status")
@@ -235,6 +290,19 @@ renderForges()
 renderTypeOptions()
 document.getElementById("instance-hostname").placeholder =
     browser.i18n.getMessage("optionsHostnamePlaceholder")
+document.getElementById("instance-review-url").placeholder =
+    browser.i18n.getMessage("optionsReviewUrlPlaceholder")
+
+// the mirror-type and review-URL fields only apply to the gerrit type
+const typeSelect = document.getElementById("instance-type")
+function syncGerritFields() {
+    const gerrit = typeSelect.value === "gerrit"
+    document.getElementById("instance-mirror-type").hidden = !gerrit
+    document.getElementById("instance-review-url").hidden = !gerrit
+}
+typeSelect.addEventListener("change", syncGerritFields)
+syncGerritFields()
+
 // fill token fields once both the static forges and the instances are rendered
 renderInstances().then(loadTokens)
 document.getElementById("options-form").addEventListener("submit", saveTokens)

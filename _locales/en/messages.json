@@ -52,7 +52,7 @@
     "description": "Title of the self-hosted forges section on the options page"
   },
   "optionsSelfHostedHint": {
-    "message": "Add your own self-hosted forge instance. Adding one asks for permission to access that site.",
+    "message": "Add your own self-hosted forge instance. For a review tool paired with a separate code-hosting site (Gerrit), also pick the code-hosting software and give the review server URL. Adding an instance asks for permission to access the queried site.",
     "description": "Hint explaining the self-hosted forges section"
   },
   "optionsAddInstance": {
@@ -86,5 +86,17 @@
   "optionsPermissionDenied": {
     "message": "Permission to access this instance was denied",
     "description": "Status message when the host permission request is denied"
+  },
+  "optionsReviewUrlPlaceholder": {
+    "message": "review.example.com (review server URL)",
+    "description": "Placeholder for the review server URL input of a Gerrit instance"
+  },
+  "optionsInvalidReviewUrl": {
+    "message": "Enter a valid review server URL",
+    "description": "Status message when the entered review server URL is invalid"
+  },
+  "optionsGerritTokenHint": {
+    "message": "Optional. Enter username:HTTP-password (the HTTP credentials generated in the account settings) to query the review server as your user. It is stored only on this device.",
+    "description": "Hint explaining the credentials input of a Gerrit instance"
   }
 }

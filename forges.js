@@ -388,6 +388,117 @@ const bitbucketServerFamily = {
     },
 }
 
+//
+// Gerrit
+//
+// Gerrit is a code-review tool, not a code host: the code is *browsed* on a
+// separate forge (a mirror running one of the families above) while the open
+// changes live on the Gerrit review server. A Gerrit adapter therefore pairs
+// two hosts — it borrows the mirror family's parseUrl to read the browse page,
+// and queries the review server for the changes. Gerrit answers "which open
+// changes touch this file" in a single query, exposed through the
+// findPRsForFile fast-path interface member (see below); background.js calls
+// it instead of the listPRsUrl + per-PR filesUrl fan-out.
+//
+// Additional interface members introduced for review-backed forges:
+//   findPRsForFile      optional async (info, requestHeaders) -> [prNumbers];
+//                       a direct query bypassing the list + per-PR fan-out
+//   permissionHostname  optional hostname whose permission the adapter needs
+//                       when it queries a host other than the browsed page's
+//
+// API docs: https://gerrit-review.googlesource.com/Documentation/rest-api-changes.html
+
+// Gerrit prefixes its JSON responses with a )]}' line against XSSI; strip it
+// before parsing
+export function parseGerritJson(text) {
+    return JSON.parse(text.replace(/^\)\]\}'/, ""))
+}
+
+// the Gerrit project name of a browse page: the mirror's full repo path
+// (owner/repo, or the nested project path on a GitLab mirror)
+function gerritProject(info) {
+    return info.projectPath ?? `${info.projectKey}/${info.repoSlug}`
+}
+
+// build a Gerrit adapter from a configured instance: `hostname` is the browse
+// mirror matched against the page, `reviewUrl` the Gerrit origin queried for
+// changes, `mirrorType` the family the mirror runs (selects the URL parsing).
+// Returns null when the config is incomplete or the mirror type is unknown.
+export function buildGerritForge({ hostname, reviewUrl, mirrorType }) {
+    const mirror = selfHostedFamilies[mirrorType]
+    if (!mirror || !reviewUrl) return null
+
+    let reviewHostname
+    try {
+        reviewHostname = new URL(reviewUrl).hostname
+    } catch {
+        return null
+    }
+
+    return {
+        label: "Gerrit",
+        hostnames: [hostname],
+        base_url: reviewUrl,
+        // the adapter queries the review server, not the browsed mirror
+        permissionHostname: reviewHostname,
+        rateLimit: null,
+        tokenStorageKey: selfHostedTokenKey(hostname),
+
+        // browse pages have the mirror family's URL layout
+        parseUrl(url) {
+            return mirror.parseUrl(url)
+        },
+
+        // the query for the open changes touching the file — `start` skips the
+        // changes already seen (Gerrit's S offset pagination); authenticated
+        // requests go through Gerrit's /a/ endpoint prefix
+        changesUrl(info, authenticated = false, start = 0) {
+            const q = `status:open project:${gerritProject(info)} file:"${info.filepath}"`
+            const path = authenticated ? "/a/changes/" : "/changes/"
+            const offset = start > 0 ? `&S=${start}` : ""
+            return `${this.base_url}${path}?q=${encodeURIComponent(q)}&n=100${offset}`
+        },
+
+        // fast path replacing the PR list + per-PR files fan-out. Gerrit flags
+        // a truncated result on its last change (_more_changes); the next page
+        // is the same query offset by the changes already fetched
+        async findPRsForFile(info, requestHeaders = {}) {
+            const authenticated = "Authorization" in requestHeaders
+            const prs = []
+            let more = true
+            while (more) {
+                const response = await fetch(new Request(
+                    this.changesUrl(info, authenticated, prs.length),
+                    { headers: requestHeaders }))
+                if (!response.ok) {
+                    throw new Error(`Failed to query the review server: [${response.status}] ${response.statusText}`)
+                }
+                const changes = parseGerritJson(await response.text())
+                prs.push(...changes.map(change => this.prNumber(change)))
+                more = changes.at(-1)?._more_changes === true
+            }
+            return prs
+        },
+
+        // _number is the change number shown in URLs (id is a long triplet)
+        prNumber(change) {
+            return change._number
+        },
+
+        // change links point at the Gerrit review UI
+        prWebUrl(info, prNumber) {
+            return `${this.base_url}/c/${gerritProject(info)}/+/${prNumber}`
+        },
+
+        // Gerrit authenticates REST calls with HTTP Basic credentials: the
+        // username and the HTTP password generated in the account settings,
+        // stored together as "user:http-password"
+        authHeader(token) {
+            return { Authorization: `Basic ${btoa(token)}` }
+        },
+    }
+}
+
 // registry of forges matched by a static hostname
 const staticForges = [github, bitbucket, codeberg, gitlab]
 
@@ -414,8 +525,21 @@ const selfHostedFamilies = {
 }
 
 // software types selectable when adding a self-hosted instance, for the options
-// page dropdown: [{ type, label }, …]
+// page dropdown: [{ type, label }, …] — the families plus the review-backed
+// Gerrit type (built by buildGerritForge rather than a family)
 export function selfHostedTypes() {
+    return [
+        ...Object.entries(selfHostedFamilies).map(([type, family]) => ({
+            type,
+            label: family.label,
+        })),
+        { type: "gerrit", label: "Gerrit" },
+    ]
+}
+
+// mirror softwares a Gerrit instance can pair with (the families whose URL
+// layout the browse mirror may use), for the options page dropdown
+export function gerritMirrorTypes() {
     return Object.entries(selfHostedFamilies).map(([type, family]) => ({
         type,
         label: family.label,
@@ -428,17 +552,22 @@ export function selfHostedTokenKey(hostname) {
     return `selfHostedToken:${hostname}`
 }
 
-// build a forge adapter for a configured instance ({ type, hostname }); the
-// same instanceOf() used for the public instances, tagged so the background can
-// tell it needs an optional host permission. Returns null for an unknown type.
-export function buildSelfHostedForge({ type, hostname }) {
-    const family = selfHostedFamilies[type]
-    if (!family) return null
+// build a forge adapter for a configured instance; tagged so the background
+// can tell it needs an optional host permission. A family type is the same
+// instanceOf() used for the public instances; the gerrit type pairs two hosts
+// and has its own factory. Returns null for an unknown type (or an incomplete
+// gerrit config).
+export function buildSelfHostedForge(instance) {
+    const { type, hostname } = instance
 
-    const forge = instanceOf(family, {
-        hostname,
-        tokenStorageKey: selfHostedTokenKey(hostname),
-    })
+    const forge = type === "gerrit"
+        ? buildGerritForge(instance)
+        : selfHostedFamilies[type] && instanceOf(selfHostedFamilies[type], {
+            hostname,
+            tokenStorageKey: selfHostedTokenKey(hostname),
+        })
+    if (!forge) return null
+
     return Object.assign(forge, { selfHosted: true, type })
 }
 

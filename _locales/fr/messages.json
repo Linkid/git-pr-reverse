@@ -52,7 +52,7 @@
     "description": "Titre de la section des forges auto-hébergées sur la page d'options"
   },
   "optionsSelfHostedHint": {
-    "message": "Ajoutez votre propre instance de forge auto-hébergée. L'ajout demande l'autorisation d'accéder à ce site.",
+    "message": "Ajoutez votre propre instance de forge auto-hébergée. Pour un outil de revue associé à un site d'hébergement de code séparé (Gerrit), choisissez aussi le logiciel d'hébergement et indiquez l'URL du serveur de revue. L'ajout d'une instance demande l'autorisation d'accéder au site interrogé.",
     "description": "Aide expliquant la section des forges auto-hébergées"
   },
   "optionsAddInstance": {
@@ -86,5 +86,17 @@
   "optionsPermissionDenied": {
     "message": "L'autorisation d'accéder à cette instance a été refusée",
     "description": "Message affiché quand la demande d'autorisation d'hôte est refusée"
+  },
+  "optionsReviewUrlPlaceholder": {
+    "message": "review.exemple.com (URL du serveur de revue)",
+    "description": "Texte indicatif du champ d'URL du serveur de revue d'une instance Gerrit"
+  },
+  "optionsInvalidReviewUrl": {
+    "message": "Saisissez une URL de serveur de revue valide",
+    "description": "Message affiché quand l'URL du serveur de revue saisie est invalide"
+  },
+  "optionsGerritTokenHint": {
+    "message": "Optionnel. Saisissez utilisateur:mot-de-passe-HTTP (les identifiants HTTP générés dans les paramètres du compte) pour interroger le serveur de revue avec votre utilisateur. Ils ne sont stockés que sur cet appareil.",
+    "description": "Aide expliquant le champ d'identifiants d'une instance Gerrit"
   }
 }

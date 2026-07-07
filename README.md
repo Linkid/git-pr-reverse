@@ -27,3 +27,6 @@ API rate limit and list pull requests from private repositories.
 - GitLab
 - self-hosted instances (GitLab CE/EE, Forgejo/Gitea, Bitbucket Server/Data
   Center) — add them in the extension's options
+- Gerrit — a review server paired with a code-hosting mirror (the file is
+  browsed on the mirror, the open changes are queried from the review
+  server) — add the pairing in the extension's options

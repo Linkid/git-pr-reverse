@@ -5,6 +5,7 @@ import {
     github, bitbucket, codeberg, gitlab,
     forgeForHostname,
     selfHostedTypes, selfHostedTokenKey, buildSelfHostedForge,
+    buildGerritForge, gerritMirrorTypes, parseGerritJson,
 } from "../forges.js"
 
 //
@@ -386,6 +387,7 @@ test("selfHostedTypes lists the supported software with labels", () => {
         { type: "gitlab", label: "GitLab" },
         { type: "forgejo", label: "Forgejo / Gitea" },
         { type: "bitbucket-server", label: "Bitbucket Server / Data Center" },
+        { type: "gerrit", label: "Gerrit" },
     ])
 })
 
@@ -514,4 +516,200 @@ test("forgeForHostname prefers a static forge over instances", () => {
 test("forgeForHostname matches a self-hosted instance by exact hostname only", () => {
     const instances = [{ type: "forgejo", hostname: "git.example.com" }]
     assert.equal(forgeForHostname("other.example.com", instances), null)
+})
+
+//
+// Gerrit (review server paired with a code-hosting mirror)
+//
+const gerritInstance = {
+    type: "gerrit",
+    hostname: "git.example.com",
+    reviewUrl: "https://review.example.com",
+    mirrorType: "forgejo",
+}
+
+test("buildGerritForge returns null on an incomplete or invalid config", () => {
+    assert.equal(buildGerritForge({ ...gerritInstance, reviewUrl: undefined }), null)
+    assert.equal(buildGerritForge({ ...gerritInstance, reviewUrl: "not a url" }), null)
+    assert.equal(buildGerritForge({ ...gerritInstance, mirrorType: "unknown" }), null)
+})
+
+test("gerrit parses browse URLs with the mirror family's layout", () => {
+    const forge = buildGerritForge(gerritInstance)
+    const info = forge.parseUrl(
+        new URL("https://git.example.com/ops/deploy/src/branch/main/roles/web/tasks.yml"))
+    assert.deepEqual(info, {
+        projectKey: "ops",
+        repoSlug: "deploy",
+        filepath: "roles/web/tasks.yml",
+        origin: "https://git.example.com",
+    })
+})
+
+test("gerrit takes the project name from a GitLab mirror's nested path", () => {
+    const forge = buildGerritForge({ ...gerritInstance, mirrorType: "gitlab" })
+    const info = forge.parseUrl(
+        new URL("https://git.example.com/group/sub/proj/-/blob/main/a/b.py"))
+    assert.equal(forge.prWebUrl(info, 42),
+        "https://review.example.com/c/group/sub/proj/+/42")
+})
+
+test("gerrit.changesUrl queries the review server for the open changes touching the file", () => {
+    const forge = buildGerritForge(gerritInstance)
+    const info = forge.parseUrl(
+        new URL("https://git.example.com/ops/deploy/src/branch/main/roles/web/tasks.yml"))
+    assert.equal(forge.changesUrl(info),
+        "https://review.example.com/changes/?q=" +
+        encodeURIComponent('status:open project:ops/deploy file:"roles/web/tasks.yml"') +
+        "&n=100")
+})
+
+test("gerrit.changesUrl uses the authenticated /a/ endpoint with credentials", () => {
+    const forge = buildGerritForge(gerritInstance)
+    const info = forge.parseUrl(
+        new URL("https://git.example.com/ops/deploy/src/branch/main/f.js"))
+    assert.match(forge.changesUrl(info, true),
+        /^https:\/\/review\.example\.com\/a\/changes\/\?q=/)
+})
+
+test("gerrit.changesUrl offsets a follow-up page with the S parameter", () => {
+    const forge = buildGerritForge(gerritInstance)
+    const info = forge.parseUrl(
+        new URL("https://git.example.com/ops/deploy/src/branch/main/f.js"))
+    assert.match(forge.changesUrl(info, false, 100), /&n=100&S=100$/)
+    // the first page carries no offset
+    assert.doesNotMatch(forge.changesUrl(info), /&S=/)
+})
+
+test("parseGerritJson strips the XSSI prefix", () => {
+    const body = ")]}'\n" + JSON.stringify([{ _number: 4211 }, { _number: 199 }])
+    assert.deepEqual(parseGerritJson(body), [{ _number: 4211 }, { _number: 199 }])
+})
+
+test("parseGerritJson handles an empty change list", () => {
+    assert.deepEqual(parseGerritJson(")]}'\n[]"), [])
+})
+
+test("gerrit.findPRsForFile returns the change numbers in one query", async () => {
+    const realFetch = globalThis.fetch
+    const realRequest = globalThis.Request
+
+    const requested = []
+    globalThis.Request = class { constructor(url, opts) { this.url = url; this.opts = opts } }
+    globalThis.fetch = async request => {
+        requested.push(request)
+        return {
+            ok: true,
+            text: async () => ")]}'\n" + JSON.stringify([{ _number: 4211 }, { _number: 199 }]),
+        }
+    }
+
+    try {
+        const forge = buildGerritForge(gerritInstance)
+        const info = forge.parseUrl(
+            new URL("https://git.example.com/ops/deploy/src/branch/main/f.js"))
+
+        // anonymous: /changes/ endpoint
+        assert.deepEqual(await forge.findPRsForFile(info), [4211, 199])
+        assert.match(requested[0].url, /\/changes\/\?q=/)
+
+        // authenticated: /a/changes/ endpoint, headers forwarded
+        const headers = forge.authHeader("user:http-password")
+        assert.deepEqual(await forge.findPRsForFile(info, headers), [4211, 199])
+        assert.match(requested[1].url, /\/a\/changes\/\?q=/)
+        assert.deepEqual(requested[1].opts.headers, headers)
+    } finally {
+        globalThis.fetch = realFetch
+        globalThis.Request = realRequest
+    }
+})
+
+test("gerrit.findPRsForFile follows the _more_changes pagination", async () => {
+    const realFetch = globalThis.fetch
+    const realRequest = globalThis.Request
+
+    // two pages: the first flags a truncated result on its last change
+    const pages = [
+        [{ _number: 1 }, { _number: 2, _more_changes: true }],
+        [{ _number: 3 }],
+    ]
+    const requested = []
+    globalThis.Request = class { constructor(url) { this.url = url } }
+    globalThis.fetch = async request => {
+        requested.push(request.url)
+        return {
+            ok: true,
+            text: async () => ")]}'\n" + JSON.stringify(pages[requested.length - 1]),
+        }
+    }
+
+    try {
+        const forge = buildGerritForge(gerritInstance)
+        const info = forge.parseUrl(
+            new URL("https://git.example.com/ops/deploy/src/branch/main/f.js"))
+        assert.deepEqual(await forge.findPRsForFile(info), [1, 2, 3])
+        // the second page is requested with the offset of the changes seen
+        assert.equal(requested.length, 2)
+        assert.doesNotMatch(requested[0], /&S=/)
+        assert.match(requested[1], /&S=2$/)
+    } finally {
+        globalThis.fetch = realFetch
+        globalThis.Request = realRequest
+    }
+})
+
+test("gerrit.findPRsForFile throws on a non-ok response", async () => {
+    const realFetch = globalThis.fetch
+    const realRequest = globalThis.Request
+
+    globalThis.Request = class { constructor(url) { this.url = url } }
+    globalThis.fetch = async () => ({ ok: false, status: 403, statusText: "Forbidden" })
+
+    try {
+        const forge = buildGerritForge(gerritInstance)
+        const info = forge.parseUrl(
+            new URL("https://git.example.com/ops/deploy/src/branch/main/f.js"))
+        await assert.rejects(forge.findPRsForFile(info),
+            /Failed to query the review server: \[403\] Forbidden/)
+    } finally {
+        globalThis.fetch = realFetch
+        globalThis.Request = realRequest
+    }
+})
+
+test("gerrit.prWebUrl links to the change on the review server", () => {
+    const forge = buildGerritForge(gerritInstance)
+    const info = forge.parseUrl(
+        new URL("https://git.example.com/ops/deploy/src/branch/main/f.js"))
+    assert.equal(forge.prWebUrl(info, 4211), "https://review.example.com/c/ops/deploy/+/4211")
+})
+
+test("gerrit.authHeader sends the credentials as HTTP Basic", () => {
+    const forge = buildGerritForge(gerritInstance)
+    assert.deepEqual(forge.authHeader("user:http-password"),
+        { Authorization: `Basic ${btoa("user:http-password")}` })
+})
+
+test("gerrit queries the review host, not the browsed mirror", () => {
+    const forge = buildGerritForge(gerritInstance)
+    assert.equal(forge.permissionHostname, "review.example.com")
+})
+
+test("selfHostedTypes offers gerrit; gerritMirrorTypes offers the families", () => {
+    assert.ok(selfHostedTypes().some(t => t.type === "gerrit"))
+    // gerrit itself cannot be a mirror: the mirror list is the families only
+    const mirrors = gerritMirrorTypes().map(t => t.type)
+    assert.deepEqual(mirrors, ["gitlab", "forgejo", "bitbucket-server"])
+})
+
+test("forgeForHostname matches a gerrit instance by its mirror hostname", () => {
+    const forge = forgeForHostname("git.example.com", [gerritInstance])
+    assert.equal(forge.selfHosted, true)
+    assert.equal(forge.type, "gerrit")
+    assert.equal(forge.base_url, "https://review.example.com")
+})
+
+test("forgeForHostname returns null for an incomplete gerrit instance", () => {
+    const instances = [{ type: "gerrit", hostname: "git.example.com" }]
+    assert.equal(forgeForHostname("git.example.com", instances), null)
 })
