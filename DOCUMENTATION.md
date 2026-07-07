@@ -28,6 +28,7 @@ The extension has two parts that communicate through per-tab results in
 lives in `browser.storage.local`).
 
 It runs on both Firefox and Chrome from a single source tree:
+
 - the manifest declares both `background.scripts` (Firefox event page) and
   `background.service_worker` (Chrome); each browser reads the key it supports;
 - `browser.js` resolves the WebExtension API namespace — Firefox's standard
@@ -145,34 +146,36 @@ are *families* whose instances — public and self-hosted alike — are built wi
 
 Here is the interface for each forge:
 
-| Member       | Purpose                                                            |
-| ------------ | ------------------------------------------------------------------ |
-| `label`      | human-readable forge name                                          |
-| `hostnames`  | array of hostnames matched against the page, exactly or as a subdomain (one per family instance) |
-| `base_url`   | API root URL the endpoint builders are hung off of                |
-| `parseUrl`   | `(URL) → { projectKey, repoSlug, filepath, origin }` or `null`     |
-| `listPRsUrl` | API endpoint listing the repo's open PRs                           |
-| `pullRequests` | `(listResponse) → array of PR objects` (unwraps paginated envelopes) |
-| `filesUrl`   | API endpoint listing a PR's modified files                         |
-| `filenames`  | filenames touched by a PR, from the files-endpoint response        |
-| `prNumber`   | identifier of a PR (used in URLs and displayed)                    |
-| `prWebUrl`   | web (non-API) URL of a PR, for the popup links                     |
-| `nextPageUrl` | `(response, data) → URL` of the next page of a paginated API response, or `null` on the last page |
-| `rateLimit`  | optional `{ header }`: response header carrying the remaining request quota; `null` if unsupported |
-| `tokenStorageKey` | optional `storage.local` key holding the user's token; omit for no auth |
-| `authHeader` | optional `(token) → headers` sent with API requests; omit for no auth |
+| Member            | Purpose                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| `label`           | human-readable forge name                                                                          |
+| `hostnames`       | array of hostnames matched against the page, exactly or as a subdomain (one per family instance)   |
+| `base_url`        | API root URL the endpoint builders are hung off of                                                 |
+| `parseUrl`        | `(URL) → { projectKey, repoSlug, filepath, origin }` or `null`                                     |
+| `listPRsUrl`      | API endpoint listing the repo's open PRs                                                           |
+| `pullRequests`    | `(listResponse) → array of PR objects` (unwraps paginated envelopes)                               |
+| `filesUrl`        | API endpoint listing a PR's modified files                                                         |
+| `filenames`       | filenames touched by a PR, from the files-endpoint response                                        |
+| `prNumber`        | identifier of a PR (used in URLs and displayed)                                                    |
+| `prWebUrl`        | web (non-API) URL of a PR, for the popup links                                                     |
+| `nextPageUrl`     | `(response, data) → URL` of the next page of a paginated API response, or `null` on the last page  |
+| `rateLimit`       | optional `{ header }`: response header carrying the remaining request quota; `null` if unsupported |
+| `tokenStorageKey` | optional `storage.local` key holding the user's token; omit for no auth                            |
+| `authHeader`      | optional `(token) → headers` sent with API requests; omit for no auth                              |
 
 A forge that omits `tokenStorageKey`/`authHeader` simply stays unauthenticated;
 declaring both opts it into the [Authentication](#authentication) flow and the
 options-page token field.
 
 So, to add a new forge:
+
 - in `forges.js`, create a new object implementing this interface
 - in `forges.js`, add the forge to `staticForges`
 - in `manifest.json`, add a `host_permissions` entry
 - in `tests/forges.test.js`, add tests.
 
 Supported forges:
+
 - **GitHub**: https://docs.github.com/en/rest/pulls
 - **Bitbucket** (Cloud): https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
 - **Codeberg** (Forgejo, Gitea-compatible API): https://forgejo.org/docs/latest/user/api-usage/
@@ -198,6 +201,7 @@ it on removal (both need `optional_host_permissions`); the background script
 skips an instance until its permission is granted.
 
 Supported self-hosted software:
+
 - **GitLab** (CE/EE): https://docs.gitlab.com/ee/api/merge_requests.html
 - **Forgejo / Gitea**: https://forgejo.org/docs/latest/user/api-usage/
 - **Bitbucket Server / Data Center**: https://developer.atlassian.com/server/bitbucket/rest/latest/
@@ -213,15 +217,18 @@ Translations live in `_locales/<lang>/messages.json`. The default locale is
 language if it exists.
 
 Strings are resolved two ways:
+
 - `__MSG_<key>__` placeholders in page markup, swapped in at load time by the
   shared `localize()` in `i18n.js` (used by both the popup and options pages)
 - `browser.i18n.getMessage("<key>")` (in `popup.js` and `options.js`).
 
 To add a locale:
+
 - copy `_locales/template.json` to `_locales/<lang>/messages.json`
 - fill every `message` field.
 
 If you add a translatable string:
+
 - add the string to `_locales/template.json`
 - update `_locales/en/messages.json` with a description and a translation
 
@@ -256,6 +263,7 @@ See https://extensionworkshop.com/documentation/develop/temporary-installation-i
 ### Chrome
 
 Load the repository folder as an unpacked extension:
+
 1. `chrome://extensions`
 2. enable *Developer mode*
 3. *Load unpacked*
@@ -265,9 +273,9 @@ See https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-worl
 
 ## Troubleshooting
 
-| Symptom                     | Likely cause / fix                                           |
-| --------------------------- | ------------------------------------------------------------ |
-| Badge shows `err`           | A request failed — often the rate limit. Check the console.  |
-| Badge/popup never updates   | The page URL doesn't match the expected file path.           |
-| Rate limit reached quickly  | Low anonymous API quota — set a token (see [Authentication](#authentication)). |
-| Private repo shows no PRs   | Set a token whose access covers that repository.             |
+| Symptom                    | Likely cause / fix                                                             |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| Badge shows `err`          | A request failed — often the rate limit. Check the console.                    |
+| Badge/popup never updates  | The page URL doesn't match the expected file path.                             |
+| Rate limit reached quickly | Low anonymous API quota — set a token (see [Authentication](#authentication)). |
+| Private repo shows no PRs  | Set a token whose access covers that repository.                               |
