@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.3 (2026-07-07)
+
+- build: run web-ext with npm
+- ci(lint): use ESLint
+- docs: add a development section
+- fix: allow pagination when listing PR and files
+- fix: cap the concurrent per-PR file fetches at 10
+- fix: enable toolbar action after URL parsing
+- perf: drop the rate limit pre-check request
+
 ## v1.3.2 (2026-07-05)
 
 - ci(test): run the tests with coverage
