@@ -214,11 +214,12 @@ Supported self-hosted software:
 ### Review-backed forges (Gerrit)
 
 Some deployments split the two roles a forge normally holds: the code is
-*browsed* on one host (a mirror running one of the supported families) while
-the reviews live on a separate review server, where the extension must send its
-queries. Such an instance is configured with three pieces: the mirror hostname
-(matched against the page), the software the mirror runs (which family's URL
-layout to parse), and the review server URL (stored as
+*browsed* on one host (a mirror) while the reviews live on a separate review
+server, where the extension must send its queries. Such an instance is
+configured with three pieces: the mirror hostname (matched against the page),
+the software the mirror runs (which URL layout to parse — any supported
+family, or the mirror-only Gitiles layout of the `*.googlesource.com` code
+browsers), and the review server URL (stored as
 `{ type, hostname, mirrorType, reviewUrl }`).
 
 Two interface members carry the mechanism, and are not specific to any review
@@ -265,6 +266,10 @@ links each one into the review UI. Public review servers like OpenDev's answer
 anonymously; for one that requires sign-in, put `username:HTTP-password` (the
 HTTP credentials from the Gerrit account settings) in the instance's
 credentials field.
+
+The same process covers Gitiles-fronted deployments — for the Go project, pair
+`go.googlesource.com` (software: **Gitiles**) with
+`https://go-review.googlesource.com`.
 
 To support new self-hosted software, define its family and add it to
 `selfHostedFamilies`.
