@@ -87,6 +87,10 @@
     "message": "L'autorisation d'accéder à cette instance a été refusée",
     "description": "Message affiché quand la demande d'autorisation d'hôte est refusée"
   },
+  "optionsInstanceError": {
+    "message": "Une erreur est survenue. Veuillez réessayer.",
+    "description": "Message affiché quand l'ajout ou la suppression d'une instance auto-hébergée échoue de façon inattendue"
+  },
   "optionsReviewUrlPlaceholder": {
     "message": "review.exemple.com (URL du serveur de revue)",
     "description": "Texte indicatif du champ d'URL du serveur de revue d'une instance Gerrit"

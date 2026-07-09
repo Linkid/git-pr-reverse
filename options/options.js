@@ -232,6 +232,8 @@ async function addInstance() {
         instance.mirrorType = document.getElementById("instance-mirror-type").value
     }
 
+    // critical path: request the permission and persist the instance. Any
+    // failure here means the instance was not added, so surface it.
     try {
         // the extension may only call the queried API (the review server for
         // a Gerrit instance) once the user grants access to its origin.
@@ -254,11 +256,20 @@ async function addInstance() {
 
         instances.push(instance)
         await saveInstances(instances)
-        document.getElementById("instance-hostname").value = ""
-        document.getElementById("instance-review-url").value = ""
+    } catch (error) {
+        console.error(`Error: ${error}`)
+        showStatus("optionsInstanceError", "instance-status")
+        return
+    }
+
+    // the instance is saved; clearing the inputs and refreshing the list is
+    // display-only, so a failure here must not report the add as failed
+    document.getElementById("instance-hostname").value = ""
+    document.getElementById("instance-review-url").value = ""
+    showStatus("optionsInstanceAdded", "instance-status")
+    try {
         await renderInstances()
         await loadTokens()
-        showStatus("optionsInstanceAdded", "instance-status")
     } catch (error) {
         console.error(`Error: ${error}`)
     }
@@ -267,19 +278,30 @@ async function addInstance() {
 // remove a self-hosted instance: drop it from storage, forget its token and
 // give back the queried host's permission we no longer need
 async function removeInstance(hostname) {
+    // critical path: drop the instance from storage. A failure here means it
+    // was not removed, so surface it.
+    let removed
     try {
         const instances = await loadInstances()
-        const removed = instances.find(i => i.hostname === hostname)
-
+        removed = instances.find(i => i.hostname === hostname)
         await saveInstances(instances.filter(i => i.hostname !== hostname))
+    } catch (error) {
+        console.error(`Error: ${error}`)
+        showStatus("optionsInstanceError", "instance-status")
+        return
+    }
+
+    // the instance is gone; forgetting its token, releasing the host
+    // permission and refreshing the list are best-effort cleanup, so a
+    // failure here must not report the removal as failed
+    showStatus("optionsInstanceRemoved", "instance-status")
+    try {
         await browser.storage.local.remove(selfHostedTokenKey(hostname))
         if (removed) {
             await browser.permissions.remove(
                 { origins: [`*://${permissionHostname(removed)}/*`] })
         }
-
         await renderInstances()
-        showStatus("optionsInstanceRemoved", "instance-status")
     } catch (error) {
         console.error(`Error: ${error}`)
     }

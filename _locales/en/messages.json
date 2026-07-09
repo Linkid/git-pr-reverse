@@ -87,6 +87,10 @@
     "message": "Permission to access this instance was denied",
     "description": "Status message when the host permission request is denied"
   },
+  "optionsInstanceError": {
+    "message": "Something went wrong. Please try again.",
+    "description": "Status message when adding or removing a self-hosted instance fails unexpectedly"
+  },
   "optionsReviewUrlPlaceholder": {
     "message": "review.example.com (review server URL)",
     "description": "Placeholder for the review server URL input of a Gerrit instance"
