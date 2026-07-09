@@ -233,19 +233,22 @@ async function addInstance() {
     }
 
     try {
-        const instances = await loadInstances()
-
-        if (instances.some(i => i.hostname === hostname)) {
-            showStatus("optionsInstanceExists", "instance-status")
-            return
-        }
-
         // the extension may only call the queried API (the review server for
-        // a Gerrit instance) once the user grants access to its origin
+        // a Gerrit instance) once the user grants access to its origin.
+        // permissions.request() must run before any other await, or it loses
+        // the click's user-activation context and the browser rejects it; an
+        // already-granted host (the duplicate case) resolves without a prompt.
         const granted = await browser.permissions.request(
             { origins: [`*://${permissionHostname(instance)}/*`] })
         if (!granted) {
             showStatus("optionsPermissionDenied", "instance-status")
+            return
+        }
+
+        const instances = await loadInstances()
+
+        if (instances.some(i => i.hostname === hostname)) {
+            showStatus("optionsInstanceExists", "instance-status")
             return
         }
 
