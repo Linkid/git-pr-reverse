@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.4.0 (2026-07-10)
+
+- feat: add Gerrit support as code review software
+- feat: add Gitiles as Gerrit mirror layout
+- fix: display a status message when adding or removing a self-hosted instance fails, and stop a list-refresh error from reporting a successful add/remove as failed
+- fix: request the host permission before reading storage when adding a self-hosted instance, so the click's user-activation is preserved and the browser no longer rejects the request
+
 ## v1.3.3 (2026-07-07)
 
 - build: run web-ext with npm
