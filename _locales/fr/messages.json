@@ -92,7 +92,7 @@
     "description": "Message affiché quand l'ajout ou la suppression d'une instance auto-hébergée échoue de façon inattendue"
   },
   "optionsReviewUrlPlaceholder": {
-    "message": "review.exemple.com (URL du serveur de revue)",
+    "message": "https://review.exemple.com",
     "description": "Texte indicatif du champ d'URL du serveur de revue d'une instance Gerrit"
   },
   "optionsInvalidReviewUrl": {
