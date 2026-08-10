@@ -128,12 +128,21 @@ read access for private ones. For Bitbucket Cloud, create a
 [repository, project or workspace access token][bb-token] (or an API token)
 with pull-request read access. For Codeberg, create an [access token][cb-token]
 in your account settings with repository read scope. For GitLab, create a
-[personal or project access token][gl-token] with the `read_api` scope.
+[personal or project access token][gl-token] with the `read_api` scope. For
+Bitbucket Server / Data Center, create an [HTTP access token][bbs-token]
+(*Manage account* → *HTTP access tokens*, or a project/repository-scoped one)
+with repository read permission — it is sent as a Bearer credential, so an
+account password is not accepted. For Gerrit, generate the
+[HTTP credentials][gerrit-auth] in your account settings and enter them as
+`username:HTTP-password`; public review servers usually need no credentials at
+all.
 
 [gh-token]: https://github.com/settings/tokens
 [bb-token]: https://support.atlassian.com/bitbucket-cloud/docs/access-tokens/
 [cb-token]: https://docs.codeberg.org/advanced/access-token/
 [gl-token]: https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html
+[bbs-token]: https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html
+[gerrit-auth]: https://gerrit-review.googlesource.com/Documentation/rest-api.html#authentication
 
 ## Forges
 
