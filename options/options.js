@@ -321,9 +321,7 @@ document.getElementById("instance-review-url").placeholder =
 // the mirror-type and review-URL fields only apply to the gerrit type
 const typeSelect = document.getElementById("instance-type")
 function syncGerritFields() {
-    const gerrit = typeSelect.value === "gerrit"
-    document.getElementById("instance-mirror-type").hidden = !gerrit
-    document.getElementById("instance-review-url").hidden = !gerrit
+    document.getElementById("gerrit-fields").hidden = typeSelect.value !== "gerrit"
 }
 typeSelect.addEventListener("change", syncGerritFields)
 syncGerritFields()

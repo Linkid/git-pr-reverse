@@ -28,8 +28,14 @@ body { background: var(--bg); color: var(--fg); }
   border-top: 1px solid var(--border); padding-top: 0.75rem;
 }
 .options__subtitle { margin: 0; }
-.options__add { display: flex; gap: 0.5rem; align-items: center; }
-.options__add .options__input { flex: 1; }
+.options__add { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.options__add .options__input { flex: 1; min-width: 8rem; }
+/* the gerrit fields take a whole row of their own: on the shared row they
+   would be squeezed narrower than their placeholders */
+.options__add-gerrit { display: flex; gap: 0.5rem; flex: 1 1 100%; }
+/* this display beats the browser's [hidden] rule (author styles win over the
+   user-agent ones), so restore it for the non-gerrit types */
+.options__add-gerrit[hidden] { display: none; }
 .options__remove, .options__add-btn {
   align-self: flex-start;
   padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 4px;

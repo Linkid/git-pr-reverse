@@ -92,7 +92,7 @@
     "description": "Status message when adding or removing a self-hosted instance fails unexpectedly"
   },
   "optionsReviewUrlPlaceholder": {
-    "message": "review.example.com (review server URL)",
+    "message": "https://review.example.com",
     "description": "Placeholder for the review server URL input of a Gerrit instance"
   },
   "optionsInvalidReviewUrl": {
