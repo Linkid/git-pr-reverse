@@ -7,11 +7,13 @@ and Chrome.
 
 ## Overview
 
-When you browse a file on a supported forge, the extension:
-- shows the number of open pull requests that modify the current file (**toolbar
-  badge**);
-- lists those pull requests as direct links when you click the toolbar icon
-  (**popup**).
+When you browse a file on a supported forge and click the toolbar icon, the
+extension:
+- lists the open pull requests that modify the current file as direct links
+  (**popup**);
+- shows their number on the icon (**toolbar badge**).
+
+The lookup runs only when you open the popup, so browsing spends no API quota.
 
 This helps you spot pending changes before editing a file and avoid conflicting
 with work already in review.

@@ -79,13 +79,16 @@ async function init() {
     // show a result: the PR list on success, the error state on failure
     const show = result => result.error ? renderError() : render(result.prs, urlInfo)
 
-    // the result is stored per tab; none stored yet means the background is
-    // still fetching, so keep the loading state and show the result when the
-    // background stores it (the listener registers first to not miss it)
+    // the result is stored per tab; none stored yet means this page hasn't
+    // been looked up, so keep the loading state, ask the background for the
+    // lookup and show the result when the background stores it (the listener
+    // registers first to not miss it)
     onTabResult(tabId, show)
     const result = await loadTabResult(tabId)
     if (result) {
         show(result)
+    } else {
+        await browser.runtime.sendMessage({ type: "getPRs", tabId, url: tabInfo.url })
     }
 }
 // register the popup logic against the browser; skipped when this module is
