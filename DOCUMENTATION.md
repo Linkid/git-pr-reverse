@@ -103,7 +103,7 @@ popup shows it again without a new lookup; reload the page to refresh it.
 ├── static/
 │   ├── icon-*.png         # toolbar / store icons
 │   └── icon.svg           # source icon
-├── tests/                 # test suite (node --test), one file per module
+├── tests/                 # test suite (node --test), one file per module + locale checks
 ├── package.json           # npm scripts + dev dependencies (ESLint, web-ext)
 ├── eslint.config.js       # ESLint flat config
 ├── .web-ext-config.mjs    # web-ext config: files to keep out of the package
@@ -321,6 +321,13 @@ If you add a translatable string:
 
 - add the string to `_locales/template.json`
 - update `_locales/en/messages.json` with a description and a translation
+- add a translation to every other locale (e.g. `_locales/fr/messages.json`)
+- name the key with an `extension`, `popup` or `options` prefix and pass it as
+  a full string literal, so the consistency test can find it.
+
+`npm test` (`tests/locales.test.js`) checks that every locale has exactly the
+template's keys with no empty message, and that the template matches the keys
+the code uses.
 
 ## Development
 
