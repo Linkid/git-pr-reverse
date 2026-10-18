@@ -3,6 +3,7 @@ export default {
     'eslint.config.js',
     'package-lock.json',
     'package.json',
+    'scripts',
     'tests',
   ],
 };
