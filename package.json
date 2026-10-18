@@ -9,6 +9,7 @@
     "build": "web-ext build --overwrite-dest",
     "lint": "eslint .",
     "lint:webext": "web-ext lint",
+    "locales": "node scripts/sync-locales.js",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='tests/**'"
   },

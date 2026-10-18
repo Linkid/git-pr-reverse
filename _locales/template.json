@@ -1,106 +1,106 @@
 {
   "extensionDescription": {
     "message": "",
-    "description": ""
+    "description": "Description of the extension"
   },
   "popupTitle": {
     "message": "",
-    "description": ""
+    "description": "Title in the popup"
   },
   "popupEmptyList": {
     "message": "",
-    "description": ""
+    "description": "Empty list message in the popup"
   },
   "popupLoading": {
     "message": "",
-    "description": ""
+    "description": "Loading message in the popup while fetching pull requests"
   },
   "popupErrorMessage": {
     "message": "",
-    "description": ""
+    "description": "Error message in the popup"
   },
   "optionsTitle": {
     "message": "",
-    "description": ""
+    "description": "Title of the options page"
   },
   "optionsTokenLabel": {
     "message": "",
-    "description": ""
+    "description": "Label for a forge token input on the options page"
   },
   "optionsTokenHint": {
     "message": "",
-    "description": ""
+    "description": "Hint explaining a forge token input on the options page"
   },
   "optionsSave": {
     "message": "",
-    "description": ""
+    "description": "Label of the save button on the options page"
   },
   "optionsClear": {
     "message": "",
-    "description": ""
+    "description": "Label of the clear button on the options page"
   },
   "optionsSaved": {
     "message": "",
-    "description": ""
+    "description": "Status message shown after saving the token"
   },
   "optionsCleared": {
     "message": "",
-    "description": ""
+    "description": "Status message shown after clearing the token"
   },
   "optionsSelfHostedTitle": {
     "message": "",
-    "description": ""
+    "description": "Title of the self-hosted forges section on the options page"
   },
   "optionsSelfHostedHint": {
     "message": "",
-    "description": ""
+    "description": "Hint explaining the self-hosted forges section"
   },
   "optionsAddInstance": {
     "message": "",
-    "description": ""
+    "description": "Label of the button that adds a self-hosted instance"
   },
   "optionsHostnamePlaceholder": {
     "message": "",
-    "description": ""
+    "description": "Placeholder for the self-hosted instance hostname input"
   },
   "optionsRemove": {
     "message": "",
-    "description": ""
+    "description": "Label of the button that removes a self-hosted instance"
   },
   "optionsInvalidHostname": {
     "message": "",
-    "description": ""
+    "description": "Status message when the entered instance hostname is invalid"
   },
   "optionsInstanceExists": {
     "message": "",
-    "description": ""
+    "description": "Status message when adding an instance that already exists"
   },
   "optionsInstanceAdded": {
     "message": "",
-    "description": ""
+    "description": "Status message shown after adding a self-hosted instance"
   },
   "optionsInstanceRemoved": {
     "message": "",
-    "description": ""
+    "description": "Status message shown after removing a self-hosted instance"
   },
   "optionsPermissionDenied": {
     "message": "",
-    "description": ""
+    "description": "Status message when the host permission request is denied"
   },
   "optionsInstanceError": {
     "message": "",
-    "description": ""
+    "description": "Status message when adding or removing a self-hosted instance fails unexpectedly"
   },
   "optionsReviewUrlPlaceholder": {
     "message": "",
-    "description": ""
+    "description": "Placeholder for the review server URL input of a Gerrit instance"
   },
   "optionsInvalidReviewUrl": {
     "message": "",
-    "description": ""
+    "description": "Status message when the entered review server URL is invalid"
   },
   "optionsGerritTokenHint": {
     "message": "",
-    "description": ""
+    "description": "Hint explaining the credentials input of a Gerrit instance"
   }
 }

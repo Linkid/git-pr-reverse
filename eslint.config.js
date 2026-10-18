@@ -10,7 +10,7 @@ export default [
         },
     },
     {
-        files: ["tests/**"],
+        files: ["tests/**", "scripts/**"],
         languageOptions: {
             globals: globals.nodeBuiltin,
         },
