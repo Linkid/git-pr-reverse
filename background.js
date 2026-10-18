@@ -20,6 +20,7 @@ if (browser) {
     browser.tabs.onCreated.addListener(handleCreated)
     browser.tabs.onUpdated.addListener(handleUpdated)
     browser.tabs.onRemoved.addListener(handleRemoved)
+    browser.runtime.onMessage.addListener(handleMessage)
 }
 
 //
@@ -151,7 +152,11 @@ function render(prs, tabId) {
     saveTabResult(tabId, { prs })
 }
 
-async function main(tab) {
+// resolve the forge adapter and file info of a tab's page
+// returns null when the extension doesn't apply to the page (no forge, or a
+// self-hosted instance whose host permission isn't granted), and
+// { forge, urlInfo: null } on a forge page that isn't a file page
+async function tabContext(tab) {
     // split the url
     const url = new URL(tab.url)
 
@@ -160,7 +165,7 @@ async function main(tab) {
     const instances = await loadInstances()
     const forge = forgeForHostname(url.hostname, instances)
     if (forge == null) {
-        return
+        return null
     }
 
     // self-hosted instances need an optional host permission before the
@@ -170,51 +175,99 @@ async function main(tab) {
     const queriedHostname = forge.permissionHostname ?? url.hostname
     if (forge.selfHosted &&
         !(await browser.permissions.contains({ origins: [`*://${queriedHostname}/*`] }))) {
+        return null
+    }
+
+    // get project info from the URL (forge-specific parsing)
+    return { forge, urlInfo: forge.parseUrl(url) }
+}
+
+// on page load: enable the action on a forge file page, without any network
+// request — the lookup runs on demand, when the popup asks for it
+async function main(tab) {
+    const context = await tabContext(tab)
+    if (context == null) {
         return
     }
 
-    // get project info from the URL (forge-specific parsing); enable the
-    // action only once the URL is known good, so the badge never flickers
+    // enable the action only once the URL is known good, so it never shows
     // on non-file pages (disable covers a file -> non-file navigation)
-    const urlInfo = forge.parseUrl(url)
-    if (urlInfo == null) {
+    if (context.urlInfo == null) {
         browser.action.disable(tab.id)
+    } else {
+        browser.action.enable(tab.id)
+    }
+
+    // drop the result and badge of the tab's previous page: the next popup
+    // open looks this page up
+    browser.action.setBadgeText({ text: "", tabId: tab.id })
+    await clearTabResult(tab.id)
+}
+
+// look up the open PRs touching the file of a tab's page, then render the
+// result (or store the error) for the popup
+async function computePRs(tabId) {
+    const tab = await browser.tabs.get(tabId)
+    const context = await tabContext(tab)
+    if (context?.urlInfo == null) {
         return
     }
-    browser.action.enable(tab.id)
+    const { forge, urlInfo } = context
 
-    // drop the result of the tab's previous page: the popup shows its loading
-    // state until this page's result lands
-    await clearTabResult(tab.id)
-
+    let prs, error
     try {
         // load the stored API token
         const requestHeaders = await loadAuthHeaders(forge)
 
-        // fast path: a forge that answers "which open PRs/changes touch this
-        // file" in one query (a review server like Gerrit) skips the PR list
-        // and the per-PR fan-out below
         if (forge.findPRsForFile) {
-            render(await forge.findPRsForFile(urlInfo, requestHeaders), tab.id)
-            return
+            // fast path: a forge that answers "which open PRs/changes touch
+            // this file" in one query (a review server like Gerrit) skips the
+            // PR list and the per-PR fan-out below
+            prs = await forge.findPRsForFile(urlInfo, requestHeaders)
+        } else {
+            // list pull requests (all pages), then keep those that touch the file
+            const { items, response } = await listAllPRs(forge, urlInfo, requestHeaders)
+            checkRateLimitFromPRs(forge, items, response)
+            const values = await getFilesPRs(forge, urlInfo, requestHeaders, items)
+            prs = values.filter(x => x)
         }
+    } catch (e) {
+        error = e
+        console.error(`${error}`)
+    }
 
-        // list pull requests (all pages), then keep those that touch the file
-        const { items: prs, response } = await listAllPRs(forge, urlInfo, requestHeaders)
-        checkRateLimitFromPRs(forge, prs, response)
-        const values = await getFilesPRs(forge, urlInfo, requestHeaders, prs)
+    // the tab may have loaded another page meanwhile: drop the stale result
+    const current = await browser.tabs.get(tabId)
+    if (current.url !== tab.url) {
+        return
+    }
 
-        // render (dropping the PRs that don't touch the file)
-        render(values.filter(x => x), tab.id)
-    } catch (error) {
+    if (error) {
         // set the popup badge
         browser.action.setBadgeText({
             text: "err",
-            tabId: tab.id
+            tabId: tabId
         })
-        // store the error state for the popup and display the error
-        saveTabResult(tab.id, { error: `${error}` })
-        console.error(`${error}`)
+        // store the error state for the popup
+        await saveTabResult(tabId, { error: `${error}` })
+    } else {
+        render(prs, tabId)
+    }
+}
+
+// lookups in flight, by tab id and page URL, so reopening the popup during a
+// lookup doesn't start a second one (while a lookup of the tab's previous page,
+// whose result will be dropped, doesn't hold back this page's)
+const lookups = new Map()
+
+// start the lookup of a tab's page unless one is already running
+function lookUp(tabId, url) {
+    const key = `${tabId} ${url}`
+    if (!lookups.has(key)) {
+        const lookup = computePRs(tabId)
+            .catch(error => console.error(`Error: ${error}`))
+            .finally(() => lookups.delete(key))
+        lookups.set(key, lookup)
     }
 }
 
@@ -241,5 +294,15 @@ async function handleRemoved(tabId) {
         await clearTabResult(tabId)
     } catch (error) {
         console.error(`Error: ${error}`)
+    }
+}
+
+function handleMessage(message, sender, sendResponse) {
+    // the popup asks for a tab's lookup; the result lands in session storage,
+    // so answer right away (an empty reply settles the popup's sendMessage
+    // on every browser)
+    if (message?.type === "getPRs") {
+        lookUp(message.tabId, message.url)
+        sendResponse()
     }
 }

@@ -37,19 +37,30 @@ It runs on both Firefox and Chrome from a single source tree:
 
 ### Background
 
-Runs on every tab update:
+The lookup runs **on demand**: loading a page makes no network request, so
+browsing costs no API quota until you open the popup.
 
-1.   **Detect the forge** by hostname (exact match or subdomain)
-2.   **Parse the URL**: extract `projectKey`, `repoSlug` and `filepath`
-3.   **Load the auth headers** for the forge from the stored token (if any)
-4.   **Promise chain**: list PRs, get files, keep PRs including the file —
-     following the forge's API pagination, so every page of PRs and files is
-     seen. The per-PR file fetches run concurrently, capped at 10 in flight
-     so a repo with many open PRs doesn't trip forge abuse protections
-5.   **Render**: set the toolbar badge text and store the result under the
-     tab's key in `browser.storage.session` — `{ prs }`, or `{ error }` when a
-     request failed. Per-tab keys keep concurrent tabs from clobbering each
-     other; the key is dropped when the tab closes or loads a new page.
+On every tab update, the background:
+
+1.   **detects the forge** by hostname (exact match or subdomain)
+2.   **parses the URL** (`projectKey`, `repoSlug`, `filepath`)
+3.   enables the action on a file page
+4.   drops the badge and the result of the tab's previous page.
+
+When the popup asks for a lookup (a `getPRs` message):
+
+1.   **loads the auth headers** for the forge from the stored token (if any)
+2.   **runs the promise chain**: list PRs, get files, keep PRs including the
+     file (following the forge's API pagination, so every page of PRs and
+     files is seen). The per-PR file fetches run concurrently, capped at 10
+     in flight so a repo with many open PRs doesn't trip forge abuse
+     protections
+3.   **renders**: sets the toolbar badge text and stores the result under the
+     tab's key in `browser.storage.session` (`{ prs }`, or `{ error }` when a
+     request failed). Per-tab keys keep concurrent tabs from clobbering each
+     other; the key is dropped when the tab closes or loads a new page. A
+     result whose tab loaded another page meanwhile is dropped, and a second
+     request for the same page while its lookup runs starts no new one.
 
 ### Popup
 
@@ -60,15 +71,19 @@ On open, the popup:
     -   `{ prs }`: renders the PR list (or a localized **empty** state when no
         PR touches the file)
     -   `{ error }`: shows a localized **error** state
-    -   nothing stored yet: the background is still fetching — keeps the
-        loading state and renders when the result lands.
+    -   nothing stored yet: the page hasn't been looked up, so it keeps the
+        loading state, asks the background for the lookup (`getPRs`) and
+        renders when the result lands.
+
+The result stays stored until the tab loads another page, so reopening the
+popup shows it again without a new lookup; reload the page to refresh it.
 
 ## Project layout
 
 ```
 .
 ├── manifest.json          # MV3 manifest
-├── background.js          # service worker: fetch PRs, match file, set badge
+├── background.js          # service worker: on-demand PR lookup, set badge
 ├── browser.js             # cross-browser WebExtension API shim (browser/chrome)
 ├── i18n.js                # shared localize() for the popup and options pages
 ├── storage.js             # shared storage.local helpers (self-hosted instances)
@@ -99,8 +114,10 @@ On open, the popup:
 
 1.   Install the extension
 2.   Open a file page on a supported forge
-3.   The toolbar badge shows the count of open PRs touching that file
-4.   Click the toolbar icon to open the popup and follow a PR link.
+3.   Click the toolbar icon: the popup looks up the open PRs touching that
+     file and lists them; follow a PR link
+4.   The toolbar badge then shows their count, until the tab loads another
+     page.
 
 A badge of `err` means a request failed (often the rate limit — see below);
 check the service-worker console for details.
@@ -270,11 +287,11 @@ mirror, `opendev.org`, and reviews it on a separate Gerrit,
 
 Then browse any file on the mirror, e.g.
 `https://opendev.org/openstack/nova/src/branch/master/nova/compute/api.py`:
-the toolbar badge shows the number of open changes touching it, and the popup
-links each one into the review UI. Public review servers like OpenDev's answer
-anonymously; for one that requires sign-in, put `username:HTTP-password` (the
-HTTP credentials from the Gerrit account settings) in the instance's
-credentials field.
+the popup lists the open changes touching it, each linked into the review UI,
+and the toolbar badge shows their count. Public review servers like OpenDev's
+answer anonymously; for one that requires sign-in, put
+`username:HTTP-password` (the HTTP credentials from the Gerrit account
+settings) in the instance's credentials field.
 
 The same process covers Gitiles-fronted deployments — for the Go project, pair
 `go.googlesource.com` (software: **Gitiles**) with
@@ -349,6 +366,7 @@ See https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-worl
 | Symptom                    | Likely cause / fix                                                             |
 | -------------------------- | ------------------------------------------------------------------------------ |
 | Badge shows `err`          | A request failed — often the rate limit. Check the console.                    |
-| Badge/popup never updates  | The page URL doesn't match the expected file path.                             |
+| Icon stays greyed out      | The page URL doesn't match the expected file path.                             |
+| Badge empty on a file page | Expected: the lookup runs when you open the popup.                             |
 | Rate limit reached quickly | Low anonymous API quota — set a token (see [Authentication](#authentication)). |
 | Private repo shows no PRs  | Set a token whose access covers that repository.                               |
