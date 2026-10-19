@@ -6,3 +6,9 @@ updates:
       interval: 'monthly'
     commit-message:
       prefix: "ci(dep)"
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: 'monthly'
+    commit-message:
+      prefix: "build(dep)"
