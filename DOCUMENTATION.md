@@ -359,6 +359,26 @@ with `npm ci`. Then:
 The CI workflows run the same scripts: lint and test on every push, build on
 the main branch and tags.
 
+### Updating the dependencies
+
+The extension ships no runtime dependency: only the dev tools (npm) and the
+GitHub Actions of the CI workflows need updating.
+
+Dependabot (`.github/dependabot.yml`) opens a pull request every month for
+each outdated GitHub Action (prefix `ci(dep)`) and npm dev dependency
+(prefix `build(dep)`). The CI runs on them; merge once it passes.
+
+To update by hand:
+
+- `npm outdated` lists the outdated dev dependencies
+- `npm update` updates them within the ranges of `package.json`; for a new
+  major version, run `npm install --save-dev <package>@latest`
+- commit both `package.json` and `package-lock.json`
+- check with `npm ci && npm run lint && npm run lint:webext && npm test`.
+
+The actions are pinned to a commit SHA, with the version in a comment: update
+both together.
+
 ## Install
 ### Firefox
 
