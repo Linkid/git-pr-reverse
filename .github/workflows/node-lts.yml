@@ -1,0 +1,63 @@
+name: Node.js LTS
+on:
+  schedule:
+    # monthly, on the 1st at 06:00 UTC
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # open an issue when a Node.js LTS newer than .nvmrc's is out, once per
+      # version: an issue already opened for it, even closed, is not reopened
+      - name: Open an issue for a newer LTS
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          current=$(tr -d '[:space:]' < .nvmrc)
+          if ! [[ "$current" =~ ^[0-9]+$ ]]; then
+            echo "::error::.nvmrc should hold a major version (e.g. 24), not '$current'"
+            exit 1
+          fi
+
+          latest=$(curl -fsSL https://nodejs.org/dist/index.json \
+            | jq '[.[] | select(.lts != false) | .version | ltrimstr("v") | split(".")[0] | tonumber] | max')
+          echo "Project: Node.js $current, latest LTS: Node.js $latest"
+          if (( latest <= current )); then
+            exit 0
+          fi
+
+          title="Move to Node.js $latest (LTS)"
+          existing=$(gh issue list --state all --search "\"$title\" in:title" \
+            --json title --jq "map(select(.title == \"$title\")) | length")
+          if (( existing > 0 )); then
+            echo "An issue already exists for Node.js $latest"
+            exit 0
+          fi
+
+          gh issue create --title "$title" --body "$(cat <<EOF
+          Node.js $latest is now the latest LTS; the project uses Node.js $current (\`.nvmrc\`).
+
+          To move to it:
+
+          1. set \`.nvmrc\` to \`$latest\`
+          2. locally: \`nvm install\`, then \`npm ci && npm run lint && npm run lint:webext && npm test\`
+          3. update the Node.js version named in \`DOCUMENTATION.md\` (Development section)
+          4. commit, e.g. \`build: move to Node.js $latest (LTS)\`; the CI checks the rest.
+
+          Close this issue to skip Node.js $latest: it won't be opened again for this version.
+          EOF
+          )"

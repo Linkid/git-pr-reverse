@@ -380,6 +380,11 @@ To update by hand:
 The actions are pinned to a commit SHA, with the version in a comment: update
 both together.
 
+Node.js is pinned to a major version in `.nvmrc`, which Dependabot doesn't
+watch: the monthly `node-lts.yml` workflow opens an issue when a newer LTS is
+out, with the steps to move to it. Close the issue to skip that version; it
+is opened once per version.
+
 ## Install
 ### Firefox
 
