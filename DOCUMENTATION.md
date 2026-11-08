@@ -342,7 +342,7 @@ the code uses.
 
 ## Development
 
-The project uses Node.js 24 (LTS), set in `.nvmrc`: the CI workflows read it,
+The project uses Node.js 26 (LTS), set in `.nvmrc`: the CI workflows read it,
 and `nvm install` (or `fnm use`) picks it locally. The dev tools (ESLint,
 web-ext) are npm dev dependencies; install them once with `npm ci`. Then:
 
