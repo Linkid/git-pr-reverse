@@ -401,10 +401,10 @@ Versions follow [semantic versioning](https://semver.org/). To release
    then `git commit -m "release: X.Y.Z"`
 5. tag the commit `X.Y.Z` (no `v` prefix) and push both:
    `git tag X.Y.Z && git push origin main X.Y.Z`
-6. the build workflow runs on the tag: download its artifact (or run
-   `npm run build`) and upload the zip to the add-on store
-7. on GitHub, create a release from the `X.Y.Z` tag, titled `X.Y.Z`, with
-   the version's `CHANGELOG.md` section as notes and the zip attached.
+6. the build workflow runs on the tag and creates the GitHub release
+   `X.Y.Z`, with the version's `CHANGELOG.md` section as notes and the zip
+   attached; it fails if `CHANGELOG.md` has no `## X.Y.Z` section
+7. upload that zip (or the output of `npm run build`) to the add-on store.
 
 ## Install
 ### Firefox

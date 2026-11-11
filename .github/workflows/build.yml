@@ -32,14 +32,45 @@ jobs:
       - name: Build with web-ext
         run: npm run build
 
-      - name: Upload Firefox artifact
+      - name: Upload the artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           path: web-ext-artifacts/*.zip
-          name: git-pr-ext-firefox
+          name: git-pr-reverse
 
-      - name: Upload Chrome artifact
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+  release:
+    name: Create the GitHub release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          path: web-ext-artifacts/*.zip
-          name: git-pr-ext-chrome
+          persist-credentials: false
+
+      - name: Download the extension
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: git-pr-reverse
+          path: dist
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          awk -v tag="$TAG" '
+            /^## / { if (found) exit; found = ($2 == tag) ; next }
+            found
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no '## $TAG' section"
+            exit 1
+          fi
+
+          gh release create "$TAG" dist/*.zip --verify-tag --title "$TAG" \
+            --notes-file notes.md
