@@ -1,17 +1,64 @@
 name: Build
-on:
-  push:
-    branches:
-      - 'main'
-    tags:
-      - '*'
+on: [push]
 
 permissions:
   contents: read
 
 jobs:
+  lint:
+    name: Lint the code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+      - name: Install the dependencies
+        run: npm ci
+
+      # eslint
+      - name: Lint the scripts
+        run: npm run lint
+
+      # web-ext
+      - name: Display web-ext version
+        run: npx web-ext --version
+      # Firefox ignores Chrome's "service_worker" key and web-ext lint warns
+      # about it: BACKGROUND_SERVICE_WORKER_IGNORED. Strip it before linting
+      - name: Drop Chrome-only service_worker key for Firefox lint
+        run: |
+          jq 'del(.background.service_worker)' manifest.json > manifest.tmp
+          mv manifest.tmp manifest.json
+      - name: Lint the webextension
+        run: npm run lint:webext -- --warnings-as-errors
+
+  test:
+    name: Run the tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+
+      - name: Run the tests with coverage
+        run: npm run test:coverage
+
   build:
     name: Build the extension
+    if: github.ref == 'refs/heads/main' || github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo
@@ -41,7 +88,7 @@ jobs:
   release:
     name: Create the GitHub release
     if: github.ref_type == 'tag'
-    needs: build
+    needs: [lint, test, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
