@@ -385,6 +385,27 @@ watch: the monthly `node-lts.yml` workflow opens an issue when a newer LTS is
 out, with the steps to move to it. Close the issue to skip that version; it
 is opened once per version.
 
+### Releasing
+
+Versions follow [semantic versioning](https://semver.org/). To release
+`X.Y.Z` from an up-to-date `main`:
+
+1. set the version in `manifest.json` and `package.json`, then run
+   `npm install --package-lock-only` so `package-lock.json` follows
+2. add a `## X.Y.Z (YYYY-MM-DD)` section at the top of `CHANGELOG.md`,
+   listing the changes since the last tag (`git log --oneline <last tag>..`)
+   with their commit prefix
+3. check with `npm ci && npm run lint && npm run lint:webext && npm test`
+4. commit the four files as `release: X.Y.Z`:
+   `git add manifest.json package.json package-lock.json CHANGELOG.md`
+   then `git commit -m "release: X.Y.Z"`
+5. tag the commit `X.Y.Z` (no `v` prefix) and push both:
+   `git tag X.Y.Z && git push origin main X.Y.Z`
+6. the build workflow runs on the tag: download its artifact (or run
+   `npm run build`) and upload the zip to the add-on store
+7. on GitHub, create a release from the `X.Y.Z` tag, titled `X.Y.Z`, with
+   the version's `CHANGELOG.md` section as notes and the zip attached.
+
 ## Install
 ### Firefox
 
