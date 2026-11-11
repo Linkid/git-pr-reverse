@@ -119,5 +119,24 @@ jobs:
             exit 1
           fi
 
+          # "Full Changelog": the compare link with the previous version, the
+          # next "## " heading of CHANGELOG.md (if any), then the section,
+          # anchored by GitHub's heading slug ("## 1.4.1 (2026-11-11)" ->
+          # "#141-2026-11-11")
+          repo="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          heading=$(awk -v tag="$TAG" '$1 == "##" && $2 == tag { print; exit }' CHANGELOG.md)
+          previous=$(awk -v tag="$TAG" '
+            $1 == "##" { if (found) { print $2; exit } found = ($2 == tag) }
+          ' CHANGELOG.md)
+          anchor=$(echo "${heading#\#\# }" | tr '[:upper:]' '[:lower:]' \
+            | sed 's/[^a-z0-9 -]//g; s/ /-/g')
+          changelog="[changelog]($repo/blob/main/CHANGELOG.md#$anchor)"
+          if [ -n "$previous" ]; then
+            full="$repo/compare/$previous...$TAG / $changelog"
+          else
+            full="$changelog"
+          fi
+          printf '\n**Full Changelog**: %s\n' "$full" >> notes.md
+
           gh release create "$TAG" dist/*.zip --verify-tag --title "$TAG" \
             --notes-file notes.md
