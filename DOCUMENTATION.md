@@ -117,7 +117,7 @@ popup shows it again without a new lookup; reload the page to refresh it.
 ├── package.json           # npm scripts + dev dependencies (ESLint, web-ext)
 ├── eslint.config.js       # ESLint flat config
 ├── .web-ext-config.mjs    # web-ext config: files to keep out of the package
-└── .github/               # CI workflows (lint, test, build) + dependabot
+└── .github/               # CI workflows (build, Node.js LTS) + dependabot
 ```
 
 ## Usage
@@ -359,15 +359,16 @@ web-ext) are npm dev dependencies; install them once with `npm ci`. Then:
 - `npm run lint`: lint the scripts with ESLint
 - `npm run lint:webext`: validate the extension with `web-ext lint`. It
   always warns that Firefox ignores the Chrome-only
-  `background.service_worker` manifest key; the CI lint workflow strips that
-  key first and escalates any other warning to an error
+  `background.service_worker` manifest key; the CI lint job strips that key
+  first and escalates any other warning to an error
 - `npm run build`: package the extension into `web-ext-artifacts/`
   (the development files listed in `.web-ext-config.mjs` stay out)
 - `npm run locales`: sync the template and the locales with `en` (see
   [Internationalization](#internationalization))
 
-The CI workflows run the same scripts: lint and test on every push, build on
-the main branch and tags.
+The CI build workflow (`.github/workflows/build.yml`) runs the same
+scripts: lint and test on every push, build on the main branch and tags, and
+the release on tags once the other three pass.
 
 ### Updating the dependencies
 
@@ -410,9 +411,10 @@ Versions follow [semantic versioning](https://semver.org/). To release
    then `git commit -m "release: X.Y.Z"`
 5. tag the commit `X.Y.Z` (no `v` prefix) and push both:
    `git tag X.Y.Z && git push origin main X.Y.Z`
-6. the build workflow runs on the tag and creates the GitHub release
-   `X.Y.Z`, with the version's `CHANGELOG.md` section as notes and the zip
-   attached; it fails if `CHANGELOG.md` has no `## X.Y.Z` section
+6. the CI build workflow runs on the tag and, once lint, test and build pass,
+   creates the GitHub release `X.Y.Z`, with the version's `CHANGELOG.md`
+   section as notes and the zip attached; it fails if `CHANGELOG.md` has no
+   `## X.Y.Z` section
 7. upload that zip (or the output of `npm run build`) to the add-on store.
 
 ## Install
