@@ -404,7 +404,9 @@ Versions follow [semantic versioning](https://semver.org/). To release
    `npm install --package-lock-only` so `package-lock.json` follows
 2. add a `## X.Y.Z (YYYY-MM-DD)` section at the top of `CHANGELOG.md`,
    listing the changes since the last tag (`git log --oneline <last tag>..`)
-   with their commit prefix
+   with their commit prefix. The version in each heading must match its tag
+   exactly: the release notes take the previous version from the next
+   heading
 3. check with `npm ci && npm run lint && npm run lint:webext && npm test`
 4. commit the four files as `release: X.Y.Z`:
    `git add manifest.json package.json package-lock.json CHANGELOG.md`
@@ -412,9 +414,10 @@ Versions follow [semantic versioning](https://semver.org/). To release
 5. tag the commit `X.Y.Z` (no `v` prefix) and push both:
    `git tag X.Y.Z && git push origin main X.Y.Z`
 6. the CI build workflow runs on the tag and, once lint, test and build pass,
-   creates the GitHub release `X.Y.Z`, with the version's `CHANGELOG.md`
-   section as notes and the zip attached; it fails if `CHANGELOG.md` has no
-   `## X.Y.Z` section
+   creates the GitHub release `X.Y.Z`, with the zip attached. Its notes are
+   the version's `CHANGELOG.md` section, followed by a *Full Changelog* line:
+   the comparison with the previous version and a link to the section. It
+   fails if `CHANGELOG.md` has no `## X.Y.Z` section
 7. upload that zip (or the output of `npm run build`) to the add-on store.
 
 ## Install
