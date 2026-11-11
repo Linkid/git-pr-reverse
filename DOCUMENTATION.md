@@ -33,7 +33,16 @@ It runs on both Firefox and Chrome from a single source tree:
   `background.service_worker` (Chrome); each browser reads the key it supports;
 - `browser.js` resolves the WebExtension API namespace (Firefox's standard
   `browser` or Chrome's `chrome`, whose MV3 APIs also return promises), so the
-  rest of the code calls `browser.*` everywhere.
+  rest of the code calls `browser.*` everywhere;
+- `browser_specific_settings` is Firefox-only, and Chrome ignores it (with an
+  "Unrecognized manifest key" warning on `chrome://extensions`):
+  - `gecko.id` identifies the add-on on the Firefox store: never change it, or
+    the store sees a new add-on
+  - `gecko.strict_min_version` and `gecko_android.strict_min_version` set the
+    minimum Firefox version, on desktop and Android
+  - `gecko.data_collection_permissions` declares the collected data, which the
+    Firefox store requires: none required, and the optional
+    `authenticationInfo` for the forge tokens.
 
 ### Background
 
@@ -437,3 +446,4 @@ See https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-worl
 | Badge empty on a file page | Expected: the lookup runs when you open the popup.                             |
 | Rate limit reached quickly | Low anonymous API quota: set a token (see [Authentication](#authentication)).  |
 | Private repo shows no PRs  | Set a token whose access covers that repository.                               |
+| Chrome: unrecognized key   | Expected: `browser_specific_settings` is Firefox-only; Chrome ignores it.      |
