@@ -1,4 +1,4 @@
-# Git PR reverse
+# <img src="static/icon.svg" width="32" alt="logo"> Git PR reverse
 
 [![Firefox Add-on](https://img.shields.io/amo/v/git-pr-reverse?logo=firefoxbrowser&label=Firefox%20Add-on)](https://addons.mozilla.org/firefox/addon/git-pr-reverse/)
 
